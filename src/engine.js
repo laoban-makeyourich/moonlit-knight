@@ -39,6 +39,27 @@ function log(state, msg) {
 }
 
 // ---------------------------------------------------------------------------
+// Run-scoped modifiers (Stage 3): blessings and smithy upgrades.
+// Blessings persist for the whole run; upgrades are per-card (id -> count).
+// ---------------------------------------------------------------------------
+
+// Cards whose Armor gain is +3 per smithy upgrade.
+const ARMOR_UPGRADE_CARDS = new Set([
+  'iron-thorn', 'bulwark-stance', 'war-cry', 'iron-resolve', 'aegis-light',
+  'moonlit-guard', 'iron-will', 'guardians-oath', 'riposte',
+]);
+
+// Cards that draw: +1 card drawn per smithy upgrade.
+const DRAW_UPGRADE_CARDS = new Set([
+  'second-wind', 'sharpen-blade', 'rally-cry', 'battle-focus', 'deep-breath',
+  'bulwark-stance', 'war-cry', 'iron-resolve', 'aegis-light',
+]);
+
+function upgradeCount(state, cardId) {
+  return (state.player.upgrades && state.player.upgrades[cardId]) || 0;
+}
+
+// ---------------------------------------------------------------------------
 // Game setup
 // ---------------------------------------------------------------------------
 
@@ -51,20 +72,24 @@ export function createGame(monsterId, deckIds = STARTER_DECK, opts = {}) {
     turn: 0,
     phase: 'player', // 'player' | 'enemy' | 'won' | 'lost'
     player: {
-      hp: CONFIG.playerStartHp,
-      maxHp: CONFIG.playerStartHp,
+      // Run-scoped entry values (Stage 3): mid-run fights enter with the
+      // run's current HP / Max HP / gold / slots; a fresh fight uses CONFIG.
+      hp: opts.startHp !== undefined ? opts.startHp : CONFIG.playerStartHp,
+      maxHp: opts.maxHp !== undefined ? opts.maxHp : CONFIG.playerStartHp,
       armor: 0,
       mana: CONFIG.playerStartMana,
-      action: CONFIG.actionCap,
-      actionCap: CONFIG.actionCap,
-      gold: CONFIG.startGold,
+      action: opts.actionCap !== undefined ? opts.actionCap : CONFIG.actionCap,
+      actionCap: opts.actionCap !== undefined ? opts.actionCap : CONFIG.actionCap,
+      gold: opts.gold !== undefined ? opts.gold : CONFIG.startGold,
       hand: [],
       deck: shuffle([...deckIds], rng),
       discard: [],
       exiled: [],
       equipment: [],
       counters: [],
-      equipSlots: CONFIG.equipSlotsStart,
+      equipSlots: opts.equipSlots !== undefined ? opts.equipSlots : CONFIG.equipSlotsStart,
+      blessings: [...(opts.blessings || [])],
+      upgrades: { ...(opts.upgrades || {}) },
       attackBonus: 0, // War Banner: +1 to all Attacks while equipped
       nextAttackBonus: 0, // Sharpen Blade / Battle Focus: next Attack only
       doubleNextDamage: false, // Blood Oath Blade
@@ -115,6 +140,8 @@ function checkGameOver(state) {
 
 export function gainArmor(state, amount) {
   if (amount <= 0 || isGameOver(state)) return;
+  // Mini Rake (blessing): all Armor gained is doubled.
+  if (state.player.blessings.includes('mini-rake')) amount *= 2;
   state.player.armor += amount;
   log(state, `You gain ${amount} Armor.`);
   // Spike Barrier: whenever you gain Armor, deal 2 damage to the enemy.
@@ -329,6 +356,15 @@ function applyAttackDamage(state, card, base) {
     if (p.equipment.includes('duel-dagger') && (p.attacksPlayedThisTurn + 1) % 2 === 0) {
       amount += 1;
     }
+    // Battle Trumpet (blessing): Basic Strike deals +2 damage.
+    if (card.id === 'basic-strike' && p.blessings.includes('battle-trumpet')) {
+      amount += 2;
+    }
+    // Smithy upgrade: Attack cards deal +3 damage per upgrade.
+    amount += 3 * upgradeCount(state, card.id);
+  } else {
+    // Smithy upgrade: other damage-dealing cards deal +1 per upgrade.
+    amount += 1 * upgradeCount(state, card.id);
   }
   // Blood Oath Blade: double the next damage you deal.
   if (p.doubleNextDamage) {
@@ -341,12 +377,19 @@ function applyAttackDamage(state, card, base) {
 function applyCardEffect(state, card) {
   const p = state.player;
   const e = state.enemy;
+  const up = upgradeCount(state, card.id);
+  // Smithy upgrade: armor-gain cards gain +3 Armor per upgrade, draw cards
+  // draw +1 per upgrade. Damage bonuses live in applyAttackDamage.
+  const armorBonus = ARMOR_UPGRADE_CARDS.has(card.id) ? 3 * up : 0;
+  const drawBonus = DRAW_UPGRADE_CARDS.has(card.id) ? up : 0;
+  const arm = (n) => n + armorBonus;
+  const draw = (n) => drawCards(state, n + drawBonus);
   switch (card.effect) {
     // --- Attack damage ---
     case 'damage-3': applyAttackDamage(state, card, 3); break;
     case 'damage-9-gain-armor-3':
       applyAttackDamage(state, card, 9);
-      gainArmor(state, 3);
+      gainArmor(state, arm(3));
       break;
     case 'damage-equal-armor': applyAttackDamage(state, card, p.armor); break;
     case 'damage-2-or-20-if-enemy-low':
@@ -357,7 +400,7 @@ function applyCardEffect(state, card) {
     case 'damage-12': applyAttackDamage(state, card, 12); break;
     case 'damage-4-gain-armor-4':
       applyAttackDamage(state, card, 4);
-      gainArmor(state, 4);
+      gainArmor(state, arm(4));
       break;
     case 'damage-half-armor': applyAttackDamage(state, card, Math.floor(p.armor / 2)); break;
     case 'damage-5-or-10-if-lost-hp':
@@ -367,28 +410,32 @@ function applyCardEffect(state, card) {
       applyAttackDamage(state, card, e.hp > p.hp ? 11 : 7);
       break;
     // --- Action ---
-    case 'draw-2': drawCards(state, 2); break;
-    case 'gain-armor-6-draw-1': gainArmor(state, 6); drawCards(state, 1); break;
-    case 'next-attack-plus-6-draw-1': p.nextAttackBonus += 6; drawCards(state, 1); break;
+    case 'draw-2': draw(2); break;
+    case 'gain-armor-6-draw-1': gainArmor(state, arm(6)); draw(1); break;
+    case 'next-attack-plus-6-draw-1': p.nextAttackBonus += 6; draw(1); break;
     case 'gain-action-1-draw-1':
       p.action = Math.min(p.actionCap, p.action + 1);
-      drawCards(state, 1);
+      draw(1);
       break;
-    case 'gain-armor-5-draw-1': gainArmor(state, 5); drawCards(state, 1); break;
-    case 'draw-2-next-attack-plus-3': drawCards(state, 2); p.nextAttackBonus += 3; break;
-    case 'gain-armor-4-draw-1': gainArmor(state, 4); drawCards(state, 1); break;
+    case 'gain-armor-5-draw-1': gainArmor(state, arm(5)); draw(1); break;
+    case 'draw-2-next-attack-plus-3': draw(2); p.nextAttackBonus += 3; break;
+    case 'gain-armor-4-draw-1': gainArmor(state, arm(4)); draw(1); break;
     // --- Spell ---
-    case 'gain-armor-10-draw-1': gainArmor(state, 10); drawCards(state, 1); break;
-    case 'gain-armor-12': gainArmor(state, 12); break;
-    case 'gain-armor-8': gainArmor(state, 8); break;
+    case 'gain-armor-10-draw-1': gainArmor(state, arm(10)); draw(1); break;
+    case 'gain-armor-12': gainArmor(state, arm(12)); break;
+    case 'gain-armor-8': gainArmor(state, arm(8)); break;
     case 'damage-8': applyAttackDamage(state, card, 8); break;
     case 'gain-armor-6-heal-6':
-      gainArmor(state, 6);
+      gainArmor(state, arm(6));
       p.hp = Math.min(p.maxHp, p.hp + 6);
       break;
     // --- Mana ---
-    case 'gain-mana-4': p.mana += 4; break;
-    case 'gain-mana-3-draw-1': p.mana += 3; drawCards(state, 1); break;
+    case 'gain-mana-4':
+      p.mana += 4;
+      // Smithy upgrade: other cards (no damage / armor / draw) gain +2 Armor.
+      if (up > 0) gainArmor(state, 2 * up);
+      break;
+    case 'gain-mana-3-draw-1': p.mana += 3; draw(1); break;
     // --- Equipment / Counter: no immediate effect; they sit in their row.
     default: break;
   }
@@ -432,6 +479,14 @@ export function playCard(state, handIndex) {
     // Lucky Horseshoe: whenever you play an Equipment card, gain 2 Armor.
     // (The horseshoe itself counts if it was already equipped.)
     if (p.equipment.includes('lucky-horseshoe')) gainArmor(state, 2);
+    // Ember Artillery (blessing): equipping deals 6 fire damage.
+    if (p.blessings.includes('ember-artillery')) {
+      log(state, 'Ember Artillery erupts!');
+      dealDamageToEnemy(state, 6, {});
+    }
+    // Smithy upgrade: other cards (no damage / armor / draw) gain +2 Armor.
+    const up = upgradeCount(state, card.id);
+    if (up > 0) gainArmor(state, 2 * up);
     return { ok: true };
   }
   if (card.type === 'Counter') {
