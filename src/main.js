@@ -1,8 +1,8 @@
-// Moonlit Knight — main entry (Stage 2).
+// Moonlit Knight — main entry (Stage 3).
 // Boot: preload first-screen art, enable the Start button, hand off to the
-// combat UI (src/combat-ui.js) via window.MoonlitKnight.start().
+// book flow (src/book.js) via window.MoonlitKnight.start().
 
-import { startCombat } from './combat-ui.js';
+import { startRun } from './book.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -87,12 +87,11 @@ async function boot() {
 
 window.MoonlitKnight = {
   start() {
-    // Stage 2: a real fight vs Thorn Wolf. Stage 3 replaces the fixed
-    // monster with the chapter/book flow.
+    // Stage 3: a full 3-chapter run (book flow). The run owns combat via
+    // startCombat; quitting returns here to the title screen.
     $('#title-screen').classList.add('hidden');
     $('#game-screen').classList.remove('hidden');
-    startCombat($('#game-screen'), {
-      monsterId: 'thorn-wolf',
+    startRun($('#game-screen'), {
       onExit() {
         $('#game-screen').classList.add('hidden');
         $('#title-screen').classList.remove('hidden');
