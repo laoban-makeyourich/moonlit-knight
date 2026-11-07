@@ -214,6 +214,9 @@
     padding:6px 12px 6px 6px; cursor:pointer; font-family:inherit; color:var(--ink);
     transition:transform .15s ease, border-color .15s ease;}
   .smithy-row:hover{transform:translateX(4px); border-color:var(--gold);}
+  .smithy-row:disabled{opacity:.55; cursor:default; transform:none;}
+  .smithy-row:disabled:hover{border-color:var(--panel-border);}
+  .smithy-note{font-size:13px; color:#c77dd8; font-style:italic; white-space:nowrap;}
   .smithy-thumb{width:40px; height:60px; object-fit:cover; border-radius:4px;}
   .smithy-name{flex:1; text-align:left; font-size:16px; color:#f3e6c0;}
   .smithy-cost{font-size:15px; color:var(--gold); white-space:nowrap;}
@@ -234,7 +237,7 @@
   <section id="game-screen" class="hidden">
     <div id="banner"></div>
   </section>
-  <div id="version">Moonlit Knight v0.3 — Stage 3</div>
+  <div id="version">Moonlit Knight v0.4 — Stage 4</div>
 </div>
 <script type="module" src="src/main.js"></script>
 </body>
