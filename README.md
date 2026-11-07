@@ -65,6 +65,11 @@ Or play on GitHub Pages: https://laoban-makeyourich.github.io/moonlit-knight/
   `?v=0.6` — bump the version in every `?v=` specifier (index.html script
   tag + all `from './….js?v=…'` imports) on each release, or browsers may
   keep running a cached pre-fix module while the CSS is already new.
+- **v0.7** — landscape-only like the original (16:9): a rotate prompt covers
+  the screen in portrait (CSS media query) and Begin tries the Screen
+  Orientation API on phones/tablets (best-effort, `src/orientation.js`);
+  combat/book/title sizes use vh clamps so a short landscape phone screen
+  fits. Version bumped to `?v=0.7` everywhere.
 
 ## Performance notes
 
