@@ -49,3 +49,22 @@ test('rotate overlay: index.html has the portrait prompt and media query', () =>
   assert.ok(html.includes('Xoay ngang'), 'overlay tells the player to rotate');
   assert.match(html, /@media\s*\(orientation:\s*portrait\)\s*\{[^}]*#rotate-overlay\s*\{\s*display:\s*flex/);
 });
+
+test('short landscape screens: compressed layout rules exist (v0.8)', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  // The middle band (equip row / HUD / notice) uses fixed bottom offsets
+  // tuned for desktop; below 640px it must compress instead of landing
+  // on top of the enemy portrait.
+  assert.ok(html.includes('@media (max-height: 640px)'), 'short-screen media query exists');
+  assert.ok(html.includes('.hud{bottom:99px'), 'HUD re-anchored just above the hand');
+  assert.ok(html.includes('.equip-row{left:44px'), 'equipment moves to a left-edge column');
+  assert.ok(html.includes('.combat-notice{bottom:141px'), 'notice tucks between enemy and HUD');
+  assert.ok(html.includes('#hero{width:min(300px, 62vw, 34vh)'), 'title hero shrinks on short screens');
+  assert.ok(html.includes('#title-screen .foot{display:none'), 'title footer hidden on short screens');
+  assert.ok(html.includes('#card-preview{width:min(210px, 42vw, 44vh)'), 'preview fits short screens');
+});
+
+test('version label hides during gameplay (was covered by End Turn)', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(html.includes('#game-screen:not(.hidden) ~ #version{display:none;}'));
+});
