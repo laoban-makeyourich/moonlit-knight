@@ -99,8 +99,6 @@ window.MoonlitKnight = {
     });
   },
   showBanner,
-  debounce,
-  preloadAll,
 };
 
 boot();
