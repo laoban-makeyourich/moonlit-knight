@@ -9,10 +9,14 @@ merchant, take fairy blessings, and face the Grave Witch at the end.
 
 ## How to play
 
-- **Turn-based combat.** Click a card to play it. Attack cards are free.
+- **Turn-based combat.** Drag a card up toward the enemy and release to play
+  it (or drag it over the enemy). Attack cards are free.
   Action cards cost Action (hourglass, refills each turn). Spells cost Mana
   (Mana does **not** refill — only Mana cards add it). Equipment is free to
   play and stays in play for the fight.
+- **Tap / click a card** only enlarges it in the middle of the screen so it
+  can be read — it never plays the card. Tap it again (or tap elsewhere) to
+  dismiss the preview.
 - **Armor** is a shield pool in front of HP. Piercing damage bypasses Armor.
 - **Reshuffle rule.** At the end of every turn the discard pile shuffles back
   into the deck, and the hand returns to the deck at the start of the next
@@ -55,6 +59,12 @@ Or play on GitHub Pages: https://laoban-makeyourich.github.io/moonlit-knight/
 - **Stage 2** — combat UI (DOM, no framework; CSS transform/opacity animations only).
 - **Stage 3** — book/chapter flow, shops, blessings, events, level-ups, bosses (run `npm test` — engine, combat UI, blessings and book tests, all green).
 - **Stage 4** — performance + stability pass (no console errors, lazy images, debounced buttons).
+- **v0.5** — combat layout reworked to match the original game's arrangement
+  (top bar, enemy ribbon, bottom-centre HUD, deck/discard arches); cards are
+  now played by drag & drop, tap only enlarges. All module URLs carry
+  `?v=0.5` — bump the version in every `?v=` specifier (index.html script
+  tag + all `from './….js?v=…'` imports) on each release, or browsers may
+  keep running a cached pre-fix module while the CSS is already new.
 
 ## Performance notes
 
