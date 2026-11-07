@@ -2,8 +2,8 @@
 // Boot: preload first-screen art, enable the Start button, hand off to the
 // book flow (src/book.js) via window.MoonlitKnight.start().
 
-import { startRun } from './book.js?v=0.7';
-import { tryLockLandscape } from './orientation.js?v=0.7';
+import { startRun } from './book.js?v=0.8';
+import { tryLockLandscape } from './orientation.js?v=0.8';
 
 const $ = (sel) => document.querySelector(sel);
 
