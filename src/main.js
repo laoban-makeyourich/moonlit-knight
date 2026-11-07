@@ -2,7 +2,8 @@
 // Boot: preload first-screen art, enable the Start button, hand off to the
 // book flow (src/book.js) via window.MoonlitKnight.start().
 
-import { startRun } from './book.js?v=0.6';
+import { startRun } from './book.js?v=0.7';
+import { tryLockLandscape } from './orientation.js?v=0.7';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -75,6 +76,10 @@ async function boot() {
   btn.disabled = false;
   btn.textContent = 'Begin the Story';
   btn.addEventListener('click', debounce(() => {
+    // Landscape game: on a phone held in portrait, try to rotate the
+    // screen for the player (best-effort; the rotate overlay guides them
+    // if the browser refuses).
+    tryLockLandscape();
     window.MoonlitKnight.start();
   }));
   // Warm the cache for the rest of the art in the background, lowest priority.
