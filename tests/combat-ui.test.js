@@ -36,6 +36,10 @@ globalThis.window = dom.window;
 globalThis.document = dom.window.document;
 globalThis.HTMLElement = dom.window.HTMLElement;
 globalThis.MouseEvent = dom.window.MouseEvent;
+globalThis.PointerEvent = dom.window.PointerEvent;
+if (typeof globalThis.PointerEvent !== 'function') {
+  throw new Error('jsdom here has no PointerEvent — the drag tests cannot run honestly.');
+}
 
 const { startCombat, isPlayable } = await import('../src/combat-ui.js');
 
@@ -75,15 +79,117 @@ test('mount: enemy, HUD and a 5-card hand render', () => {
   }
 });
 
-test('click-to-play: a strike damages the enemy and a floater appears', () => {
+// --- Drag helpers (Pointer Events, as a real browser dispatches them) -------
+function pointer(target, type, { x, y, pointerId = 1, button = 0 } = {}) {
+  const ev = new PointerEvent(type, {
+    bubbles: true, cancelable: true, clientX: x, clientY: y, pointerId, button,
+  });
+  target.dispatchEvent(ev);
+  return ev;
+}
+
+// Drag the hand card at `cardIndex` from (x0, y0) to (x1, y1) and release.
+function dragCard(container, cardIndex, x0, y0, x1, y1) {
+  const card = $$('.hand-card', container)[cardIndex];
+  pointer(card, 'pointerdown', { x: x0, y: y0 });
+  pointer(window, 'pointermove', { x: x1, y: y1 });
+  pointer(window, 'pointerup', { x: x1, y: y1 });
+}
+
+test('drag-to-play: dragging a strike up damages the enemy and a floater appears', () => {
   const { api, container } = mount();
   try {
     const before = api.state.enemy.hp;
-    $$('.hand-card', container)[0].click();
+    dragCard(container, 0, 400, 700, 400, 560); // up 140px > 80px lift rule
     assert.equal(api.state.enemy.hp, before - 3);
     assert.equal($$('.hand-card', container).length, 4);
     assert.equal($$('.floater.dmg', container).length >= 1, true);
     assert.equal($('.enemy-area .bar-text', container).textContent, '17 / 20');
+  } finally {
+    api.destroy();
+  }
+});
+
+test('drag-to-play: dropping over the enemy zone plays even without a big lift', () => {
+  const { api, container } = mount();
+  try {
+    const before = api.state.enemy.hp;
+    // Start low, end in the enemy zone (y < 45% of 768) with only 60px lift.
+    dragCard(container, 0, 400, 400, 400, 340);
+    assert.equal(api.state.enemy.hp, before - 3);
+    assert.equal($$('.hand-card', container).length, 4);
+  } finally {
+    api.destroy();
+  }
+});
+
+test('drag highlight: dragging up marks the enemy area as the drop target', () => {
+  const { api, container } = mount();
+  try {
+    const card = $$('.hand-card', container)[0];
+    pointer(card, 'pointerdown', { x: 400, y: 700 });
+    pointer(window, 'pointermove', { x: 400, y: 600 });
+    assert.equal($('.enemy-area', container).classList.contains('drop-target'), true);
+    assert.equal(card.classList.contains('dragging'), true);
+    pointer(window, 'pointerup', { x: 400, y: 600 });
+    assert.equal($('.enemy-area', container).classList.contains('drop-target'), false);
+  } finally {
+    api.destroy();
+  }
+});
+
+test('tap: tapping a card enlarges it in the preview and never plays it', () => {
+  const { api, container } = mount();
+  try {
+    const before = api.state.enemy.hp;
+    const card = $$('.hand-card', container)[0];
+    pointer(card, 'pointerdown', { x: 400, y: 700 });
+    pointer(window, 'pointerup', { x: 400, y: 700 }); // no movement: a tap
+    assert.equal(api.state.enemy.hp, before, 'tap must not deal damage');
+    assert.equal($$('.hand-card', container).length, 5);
+    const preview = container.querySelector('#card-preview');
+    assert.equal(preview.classList.contains('show'), true);
+    assert.ok(preview.src.includes('basic-strike'), 'preview shows the tapped card');
+    // Tap the same card again: the preview toggles off.
+    pointer(card, 'pointerdown', { x: 400, y: 700 });
+    pointer(window, 'pointerup', { x: 400, y: 700 });
+    assert.equal(preview.classList.contains('show'), false);
+  } finally {
+    api.destroy();
+  }
+});
+
+test('drag sideways / down: the card snaps back and is not played', () => {
+  const { api, container } = mount();
+  try {
+    const before = api.state.enemy.hp;
+    dragCard(container, 0, 400, 700, 520, 700); // sideways 120px
+    assert.equal(api.state.enemy.hp, before);
+    assert.equal($$('.hand-card', container).length, 5);
+    assert.equal($$('.hand-card', container)[0].style.transform, '');
+    dragCard(container, 0, 400, 700, 400, 760); // down 60px
+    assert.equal(api.state.enemy.hp, before);
+    assert.equal($$('.hand-card', container).length, 5);
+  } finally {
+    api.destroy();
+  }
+});
+
+test('drag rejected: Second Wind with 0 Action is refused with a notice', () => {
+  const { api, container } = mount();
+  try {
+    api.state.player.hand = ['second-wind', 'basic-strike', 'basic-strike', 'basic-strike', 'basic-strike'];
+    api.state.player.action = 0;
+    api.render();
+    const card = $$('.hand-card', container).find((img) => img.title.startsWith('Second Wind'));
+    assert.ok(card, 'Second Wind is in hand');
+    const hpBefore = api.state.enemy.hp;
+    pointer(card, 'pointerdown', { x: 400, y: 700 });
+    pointer(window, 'pointermove', { x: 400, y: 560 });
+    pointer(window, 'pointerup', { x: 400, y: 560 });
+    assert.equal(api.state.enemy.hp, hpBefore, 'rejected card deals no damage');
+    assert.equal($$('.hand-card', container).length, 5, 'rejected card stays in hand');
+    assert.match($('.combat-notice', container).textContent, /Not enough Action/);
   } finally {
     api.destroy();
   }
@@ -277,35 +383,118 @@ test('hover preview: mouseover shows a separate preview, mouseout hides it', () 
   }
 });
 
-test('delegated clicks: two different cards in quick succession both play', () => {
+test('dragged in quick succession: two different cards both play', () => {
   const { api, container } = mount();
   try {
     const before = api.state.enemy.hp;
-    $$('.hand-card', container)[0].click();
+    dragCard(container, 0, 400, 700, 400, 560);
     assert.equal(api.state.enemy.hp, before - 3);
-    // The hand re-rendered; immediately click the card now at index 0.
+    // The hand re-rendered; immediately drag the card now at index 0.
     // Same index, new generation — must NOT be swallowed by the debounce.
-    $$('.hand-card', container)[0].click();
+    dragCard(container, 0, 400, 700, 400, 560);
     assert.equal(api.state.enemy.hp, before - 6);
   } finally {
     api.destroy();
   }
 });
 
-test('delegated clicks: double-click on one card plays it once', () => {
+test('dragged twice quickly: one failing card is attempted once', () => {
   const { api, container } = mount();
   try {
     // Force Second Wind to the front of the hand so no draw luck is needed.
     api.state.player.hand = ['second-wind', 'basic-strike', 'basic-strike', 'basic-strike', 'basic-strike'];
     api.state.player.action = 0;
     api.render();
-    const first = $$('.hand-card', container).find((img) => img.title.startsWith('Second Wind'));
-    assert.ok(first, 'Second Wind is in hand');
     const hpBefore = api.state.enemy.hp;
-    first.click();
-    first.click();
+    dragCard(container, 0, 400, 700, 400, 560);
+    dragCard(container, 0, 400, 700, 400, 560);
     assert.equal(api.state.enemy.hp, hpBefore, 'failed card deals no damage twice');
+    assert.equal($$('.hand-card', container).length, 5, 'failed card stays in hand');
     assert.equal($$('.hand-card.shake', container).length, 1, 'exactly one shake');
+  } finally {
+    api.destroy();
+  }
+});
+
+test('layout: original-style combat arrangement', () => {
+  const { api, container } = mount();
+  try {
+    // Top bar: blessing circles, gold, back arrow.
+    assert.ok($('.combat-topbar', container), 'top bar exists');
+    assert.equal($$('.blessing-dot', container).length, 3, '3 empty blessing outlines');
+    assert.ok($('.topbar-gold .gold-num', container), 'gold lives in the top bar');
+    assert.equal($('.topbar-gold .gold-num', container).textContent, '23');
+    assert.ok($('.topbar-back', container), 'back arrow exists');
+    // Enemy: ribbon name + Lv, HP bar, thin blue bar + hourglass.
+    assert.ok($('.enemy-name', container), 'enemy name ribbon exists');
+    assert.match($('.enemy-name', container).textContent, /Thorn Wolf/);
+    assert.ok($('.lv-tag', container), 'Lv tag on the ribbon');
+    assert.ok($('.enemy-mana-row', container), 'thin blue bar row exists');
+    assert.match($('.enemy-hourglass', container).textContent, /⏳ 0/);
+    assert.ok($('.enemy-special', container), 'special-ability pill exists');
+    // Player: End Turn immediately left of the portrait in DOM order.
+    const playerArea = $('.player-area', container);
+    assert.equal(playerArea.children[0].classList.contains('end-turn-btn'), true);
+    assert.equal(playerArea.children[1].classList.contains('player-portrait-wrap'), true);
+    // HUD bottom-centre: HP, Mana, Action — and no gold (gold is top bar).
+    assert.ok($('.hud', container), 'HUD exists');
+    assert.equal($('.hud .gold-num', container), null, 'no gold in the HUD');
+    assert.equal($('.action-num', container).textContent, '2 / 2');
+    // Equipment row above the HUD; deck/discard arches bottom-left.
+    assert.ok($('.equip-row', container), 'equipment row exists');
+    assert.equal($$('.pile-arch', container).length, 2, 'two pile arches');
+    assert.equal($$('.pile-arch .pile-label', container)[0].textContent, 'Deck');
+    assert.equal($$('.pile-arch .pile-label', container)[1].textContent, 'Discard');
+    assert.equal($$('.pile-arch .pile-num', container)[0].textContent, '5',
+      'deck count: 10-card deck minus 5 drawn');
+    assert.equal($$('.pile-arch .pile-num', container)[1].textContent, '0',
+      'discard count: nothing discarded yet');
+    // Log: collapsible on the left edge, collapsed by default.
+    assert.ok($('.combat-log', container), 'log panel exists');
+    assert.equal($('.combat-log', container).classList.contains('collapsed'), true);
+    assert.ok($('.log-toggle', container), 'log toggle exists');
+    assert.ok($('.combat-notice', container), 'notice strip exists');
+  } finally {
+    api.destroy();
+  }
+});
+
+// --- Preview wiring + cache-busting (retest finding 2026-11-07) -----------
+import { readFileSync } from 'node:fs';
+
+test('preview wiring: the real index.html styles the preview and busts the JS cache', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  // The preview box must have size even before its image loads.
+  assert.match(html, /#card-preview\{[^}]*aspect-ratio:\s*342\s*\/\s*519/);
+  assert.match(html, /#card-preview\{[^}]*background:#1a1426/);
+  assert.match(html, /#card-preview\.show\{[^}]*opacity:\s*1/);
+  // Every module URL carries the same ?v= so a new release is a fresh
+  // fetch (the missing-preview retest ran a cached pre-fix combat-ui.js).
+  assert.match(html, /src="src\/main\.js\?v=0\.5"/);
+  for (const src of ['src/main.js', 'src/book.js', 'src/combat-ui.js', 'src/engine.js']) {
+    const js = readFileSync(new URL(`../${src}`, import.meta.url), 'utf8');
+    for (const line of js.split('\n')) {
+      if (!line.trimStart().startsWith('import ')) continue; // skip comments
+      for (const m of line.matchAll(/from\s+'(\.\/[^']+)'/g)) {
+        assert.ok(m[1].endsWith('?v=0.5'), `${src} imports ${m[1]} without the cache-buster`);
+      }
+    }
+  }
+});
+
+test('preview wiring: the mounted preview is a real img with the card art', () => {
+  const { api, container } = mount();
+  try {
+    const preview = container.querySelector('#card-preview');
+    assert.ok(preview, 'preview element is in the DOM');
+    assert.equal(preview.tagName, 'IMG');
+    // jsdom has no layout, so check the wiring instead of pixels: hovering
+    // a card must set the preview src and the show class (the browser
+    // playtest must still confirm it is actually visible on screen).
+    const first = $$('.hand-card', container)[0];
+    first.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    assert.equal(preview.classList.contains('show'), true);
+    assert.ok(preview.src.includes('basic-strike'));
   } finally {
     api.destroy();
   }
