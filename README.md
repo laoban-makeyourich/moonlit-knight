@@ -48,7 +48,7 @@ Or play on GitHub Pages: https://laoban-makeyourich.github.io/moonlit-knight/
 - **Stage 0** — skeleton: title screen, asset preload, wiring.
 - **Stage 1** — data + combat engine (pure JS) with node unit tests (`node tests/engine.test.js`, 20+ tests, all green).
 - **Stage 2** — combat UI (DOM, no framework; CSS transform/opacity animations only).
-- **Stage 3** — book/chapter flow, shops, blessings, events, level-ups, bosses.
+- **Stage 3** — book/chapter flow, shops, blessings, events, level-ups, bosses (run `npm test` — engine, combat UI, blessings and book tests, all green).
 - **Stage 4** — performance + stability pass (no console errors, lazy images, debounced buttons).
 
 ## Performance notes
