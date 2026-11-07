@@ -70,6 +70,12 @@ Or play on GitHub Pages: https://laoban-makeyourich.github.io/moonlit-knight/
   Orientation API on phones/tablets (best-effort, `src/orientation.js`);
   combat/book/title sizes use vh clamps so a short landscape phone screen
   fits. Version bumped to `?v=0.7` everywhere.
+- **v0.8** — short-landscape fix: the HUD / equipment row / notice used fixed
+  bottom offsets tuned for desktop, which land on top of the enemy portrait
+  on a ~390px-tall phone screen. Below 640px height the layout compresses
+  (smaller enemy, equipment as a left-edge column, HUD just above the hand,
+  notice between enemy and HUD, title footer hidden) and the version label
+  hides during gameplay (it was partly covered by End Turn).
 
 ## Performance notes
 
