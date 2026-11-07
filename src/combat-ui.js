@@ -29,9 +29,9 @@
 // The module is also importable headlessly (node + jsdom) for the smoke test:
 // it touches `document` only inside functions, never at module top level.
 
-import { createGame, playCard, endTurn, isGameOver } from './engine.js?v=0.6';
-import { getCard, STARTER_DECK } from './cards.js?v=0.6';
-import { getMonster } from './monsters.js?v=0.6';
+import { createGame, playCard, endTurn, isGameOver } from './engine.js?v=0.7';
+import { getCard, STARTER_DECK } from './cards.js?v=0.7';
+import { getMonster } from './monsters.js?v=0.7';
 
 const CARDBACK = 'assets/ui/cardback.jpg';
 
@@ -302,7 +302,7 @@ export function startCombat(container, opts = {}) {
   // 10-minute HTTP cache window when the retest ran. Most likely cause:
   // the retest browser ran the CACHED pre-fix combat-ui.js (no preview
   // element at all) with fresh CSS. Mitigations shipped in v0.5:
-  // (1) every module URL carries ?v=0.6 so a new release is a fresh fetch;
+  // (1) every module URL carries ?v=0.7 so a new release is a fresh fetch;
   // (2) the preview box now has an explicit aspect-ratio + background, so
   // it has size even before its image loads; (3) tap-to-preview gives the
   // preview a second, explicit trigger path besides hover.
