@@ -1,7 +1,20 @@
-// Moonlit Knight — combat UI (Stage 2).
+// Moonlit Knight — combat UI (Stage 2, layout + drag rework v0.5).
 // DOM-only layer on top of the Stage 1 engine (src/engine.js).
 // No framework, no build step. Animations are CSS transform/opacity only;
 // JS timers are used solely for one-shot cleanup / banner timing.
+//
+// Layout follows the original game's combat screen (verified from real
+// Knight gameplay video, 2026-11-07): top bar with blessing circles, gold
+// and a back arrow; big enemy portrait top-centre with a name/Lv ribbon,
+// red HP bar, thin blue bar + hourglass; player portrait in an arch frame
+// bottom-right with End Turn immediately left of it; HUD bottom-centre
+// (HP / Mana / Action); equipment chips just above the HUD; deck/discard
+// arches bottom-left (our own labels — the original's two arches are
+// unlabeled in the footage); hand bottom-centre.
+//
+// Cards are played by DRAG AND DROP (Pointer Events): drag a card up toward
+// the enemy and release. A tap (tiny, quick press) only enlarges the card
+// in the centre preview so it can be read; it never plays.
 //
 // Usage (browser):  import { startCombat } from './combat-ui.js';
 //   const combat = startCombat(document.getElementById('game-screen'),
@@ -16,9 +29,9 @@
 // The module is also importable headlessly (node + jsdom) for the smoke test:
 // it touches `document` only inside functions, never at module top level.
 
-import { createGame, playCard, endTurn, isGameOver } from './engine.js';
-import { getCard, STARTER_DECK } from './cards.js';
-import { getMonster } from './monsters.js';
+import { createGame, playCard, endTurn, isGameOver } from './engine.js?v=0.5';
+import { getCard, STARTER_DECK } from './cards.js?v=0.5';
+import { getMonster } from './monsters.js?v=0.5';
 
 const CARDBACK = 'assets/ui/cardback.jpg';
 
@@ -85,6 +98,15 @@ const PLAY_DENIED = {
   'no-slot': 'No free equipment slot.',
 };
 
+// Blessing names for the top-bar gold circles. Duplicated from book.js
+// (BLESSINGS) on purpose: book.js imports this module, so importing back
+// would be circular.
+const BLESSING_NAMES = {
+  'ember-artillery': 'Ember Artillery',
+  'battle-trumpet': 'Battle Trumpet',
+  'mini-rake': 'Mini Rake',
+};
+
 // ---------------------------------------------------------------------------
 // Playability — mirrors the engine's validation, without playing the card.
 // ---------------------------------------------------------------------------
@@ -124,6 +146,24 @@ export function startCombat(container, opts = {}) {
   root.id = 'combat-root';
   container.appendChild(root);
 
+  // --- Top bar (original layout): blessing circles, gold, back arrow ------
+  const topbar = el('div', 'combat-topbar');
+  const blessingDots = el('div', 'blessing-dots');
+  topbar.appendChild(blessingDots);
+  const topSpacer = el('div', 'topbar-spacer');
+  topbar.appendChild(topSpacer);
+  const topGold = el('div', 'topbar-gold');
+  topGold.appendChild(el('span', null, '🪙'));
+  const goldText = el('span', 'gold-num');
+  topGold.appendChild(goldText);
+  topbar.appendChild(topGold);
+  const backBtn = el('button', 'topbar-back', '←');
+  backBtn.type = 'button';
+  backBtn.title = 'Quit battle — back to title';
+  backBtn.addEventListener('click', debounce(() => exitToTitle(), 350));
+  topbar.appendChild(backBtn);
+  root.appendChild(topbar);
+
   // --- Enemy area (top-center) -------------------------------------------
   const enemyArea = el('div', 'enemy-area');
   const enemyPortraitWrap = el('div', 'enemy-portrait-wrap');
@@ -143,28 +183,42 @@ export function startCombat(container, opts = {}) {
   const enemyHpText = el('span', 'bar-text');
   enemyHpBar.appendChild(enemyHpFill);
   enemyHpBar.appendChild(enemyHpText);
-  // Thin blue bar under the enemy HP: flavor (enemy mana, static).
+  // Thin blue bar + hourglass number under the enemy HP (original layout).
+  // The number is the enemy's turn count (0 at the start, as in the
+  // original's first frame); the bar itself is flavor, as before.
+  const enemyManaRow = el('div', 'enemy-mana-row');
   const enemyManaBar = el('div', 'bar mana-bar thin');
   const enemyManaFill = el('div', 'bar-fill mana-fill');
   enemyManaFill.style.width = '60%';
   enemyManaBar.appendChild(enemyManaFill);
+  const enemyHourglass = el('span', 'enemy-hourglass');
+  enemyHourglass.title = 'Enemy turns taken';
+  enemyManaRow.appendChild(enemyManaBar);
+  enemyManaRow.appendChild(enemyHourglass);
   const enemySpecial = el('div', 'enemy-special', monster.special || '');
   enemyArea.appendChild(enemyPortraitWrap);
   enemyArea.appendChild(enemyName);
   enemyArea.appendChild(enemyHpBar);
-  enemyArea.appendChild(enemyManaBar);
+  enemyArea.appendChild(enemyManaRow);
   enemyArea.appendChild(enemySpecial);
   root.appendChild(enemyArea);
 
-  // --- Combat log (bottom-left corner) ------------------------------------
-  const logPanel = el('div', 'combat-log');
+  // --- Combat log: collapsible panel on the left edge -----------------------
+  // Default collapsed so it never covers the deck/discard arches. The
+  // notice line is a separate strip above the hand (always visible).
+  const logPanel = el('div', 'combat-log collapsed');
+  const logToggle = el('button', 'log-toggle', 'LOG');
+  logToggle.type = 'button';
+  logToggle.title = 'Show / hide the battle log';
+  logToggle.addEventListener('click', () => logPanel.classList.toggle('collapsed'));
   const logTitle = el('div', 'log-title', 'Battle Log');
   const logLines = el('div', 'log-lines');
-  const noticeLine = el('div', 'log-notice');
+  logPanel.appendChild(logToggle);
   logPanel.appendChild(logTitle);
   logPanel.appendChild(logLines);
-  logPanel.appendChild(noticeLine);
   root.appendChild(logPanel);
+  const noticeLine = el('div', 'combat-notice');
+  root.appendChild(noticeLine);
 
   // --- Equipment row (just above the HUD) ----------------------------------
   const equipRow = el('div', 'equip-row');
@@ -193,15 +247,9 @@ export function startCombat(container, opts = {}) {
   const actionText = el('span', 'action-num');
   actionWrap.appendChild(actionIcon);
   actionWrap.appendChild(actionText);
-  const goldWrap = el('div', 'hud-gold');
-  const goldIcon = el('span', null, '🪙');
-  const goldText = el('span', 'gold-num');
-  goldWrap.appendChild(goldIcon);
-  goldWrap.appendChild(goldText);
   hud.appendChild(hpWrap);
   hud.appendChild(manaWrap);
   hud.appendChild(actionWrap);
-  hud.appendChild(goldWrap);
   root.appendChild(hud);
 
   // --- Player area (bottom-right): arched portrait + End Turn --------------
@@ -218,46 +266,184 @@ export function startCombat(container, opts = {}) {
   playerArea.appendChild(playerPortraitWrap);
   root.appendChild(playerArea);
 
+  // --- Deck / discard piles: two arch frames, bottom-left ------------------
+  // Our own labels: the original's two bottom-left arches are unlabeled
+  // in the footage, so do not present this labeling as verified.
+  const deckPiles = el('div', 'deck-piles');
+  const deckPile = el('div', 'pile-arch');
+  const deckPileArt = el('div', 'pile-card');
+  const deckPileNum = el('span', 'pile-num', '0');
+  deckPileArt.appendChild(deckPileNum);
+  deckPile.appendChild(deckPileArt);
+  deckPile.appendChild(el('div', 'pile-label', 'Deck'));
+  const discardPile = el('div', 'pile-arch');
+  const discardPileArt = el('div', 'pile-card');
+  const discardPileNum = el('span', 'pile-num', '0');
+  discardPileArt.appendChild(discardPileNum);
+  discardPile.appendChild(discardPileArt);
+  discardPile.appendChild(el('div', 'pile-label', 'Discard'));
+  deckPiles.appendChild(deckPile);
+  deckPiles.appendChild(discardPile);
+  root.appendChild(deckPiles);
+
   // --- Hand (bottom-center) -------------------------------------------------
   const handEl = el('div', 'hand');
   root.appendChild(handEl);
 
   // --- Enlarged card preview (separate element, pointer-events:none) --------
-  // Hovering a hand card shows its art large in the middle of the screen.
-  // The preview never intercepts clicks, so it cannot cover a neighbour
-  // and swallow that neighbour's click (playtest: one click did nothing).
+  // Hovering a hand card shows its art large in the middle of the screen;
+  // tapping a card toggles the same preview. The preview never intercepts
+  // input, so it cannot cover a neighbour and swallow its input.
+  //
+  // NOTE on the missing-preview report (retest 2026-11-07): the live files
+  // were byte-identical to local, the handler logic passes in jsdom, and the
+  // new CSS was demonstrably live (trait pill + small hover lift were both
+  // seen) — while the old JS module was still within GitHub Pages'
+  // 10-minute HTTP cache window when the retest ran. Most likely cause:
+  // the retest browser ran the CACHED pre-fix combat-ui.js (no preview
+  // element at all) with fresh CSS. Mitigations shipped in v0.5:
+  // (1) every module URL carries ?v=0.5 so a new release is a fresh fetch;
+  // (2) the preview box now has an explicit aspect-ratio + background, so
+  // it has size even before its image loads; (3) tap-to-preview gives the
+  // preview a second, explicit trigger path besides hover.
   const cardPreview = imgWithFallback('assets/ui/cardback.jpg', 'Card preview');
   cardPreview.id = 'card-preview';
   root.appendChild(cardPreview);
-  function hidePreview() { cardPreview.classList.remove('show'); }
-  handEl.addEventListener('mouseover', (event) => {
-    const img = event.target.closest('.hand-card');
-    if (!img) return;
+  let previewFor = null; // src of the card currently enlarged, if any
+  function hidePreview() {
+    cardPreview.classList.remove('show');
+    previewFor = null;
+  }
+  function showPreviewFor(img) {
     cardPreview.src = img.src;
     cardPreview.classList.add('show');
+    previewFor = img.src;
+  }
+  function togglePreview(img) {
+    if (cardPreview.classList.contains('show') && previewFor === img.src) {
+      hidePreview();
+    } else {
+      showPreviewFor(img);
+    }
+  }
+  handEl.addEventListener('mouseover', (event) => {
+    if (drag) return; // while dragging, the card stays under the pointer
+    const img = event.target.closest('.hand-card');
+    if (!img) return;
+    showPreviewFor(img);
   });
   handEl.addEventListener('mouseout', (event) => {
     if (event.relatedTarget && handEl.contains(event.relatedTarget)) return;
     hidePreview();
   });
-  // Delegated clicks: the listener lives on the hand container, so a click
-  // is never lost when render() rebuilds the hand between mousedown and
-  // mouseup. Debounced per (hand generation, index): a double-click on one
-  // card plays it once, but two different cards in quick succession — even
-  // if the second lands at the same index after a re-render — both work.
+  // Tapping anywhere that is not a hand card dismisses the preview.
+  root.addEventListener('pointerdown', (event) => {
+    if (!event.target.closest || !event.target.closest('.hand-card')) hidePreview();
+  });
+
+  // --- Drag & drop: drag a card up toward the enemy to play it -------------
+  // Pointer Events (mouse + touch), NOT HTML5 drag-and-drop. Clicking /
+  // tapping a card never plays it — a tap only toggles the centre preview.
+  const DROP_LIFT_PX = 80; // dragging up more than this also counts as a drop
+  const TAP_MOVE_PX = 8;   // pointerup within this distance counts as a tap
+  const TAP_TIME_MS = 300;
   let handGen = 0;
   let lastCardPlay = { gen: -1, index: -1, time: 0 };
-  handEl.addEventListener('click', (event) => {
-    const img = event.target.closest('.hand-card');
-    if (!img) return;
-    const index = Number(img.dataset.index);
-    const now = Date.now();
-    if (lastCardPlay.gen === handGen && lastCardPlay.index === index
-        && now - lastCardPlay.time < 350) return;
-    lastCardPlay = { gen: handGen, index, time: now };
-    hidePreview();
-    onCardClick(index, img);
-  });
+  let drag = null; // { img, index, pointerId, startX, startY, startTime, overEnemy }
+
+  function dragOverEnemy(x, y) {
+    // Rect hit-test (real browsers). Headless DOMs have no layout (all
+    // rects are 0), so the upper part of the screen stands in for the
+    // enemy area there.
+    const r = enemyArea.getBoundingClientRect();
+    if (r && (r.width > 0 || r.height > 0)) {
+      return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    }
+    return y < window.innerHeight * 0.45;
+  }
+
+  function onDragStart(event) {
+    if (drag) return;
+    const img = event.target.closest ? event.target.closest('.hand-card') : null;
+    if (!img || state.phase !== 'player') return;
+    if (event.button !== undefined && event.button !== 0) return; // primary only
+    drag = {
+      img,
+      index: Number(img.dataset.index),
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startTime: Date.now(),
+      overEnemy: false,
+    };
+    // Do NOT hide the preview here: a tap is down+up, and hiding on down
+    // would make the up-toggle re-show it instead of dismissing it.
+    img.classList.add('dragging');
+    window.addEventListener('pointermove', onDragMove);
+    window.addEventListener('pointerup', onDragEnd);
+    window.addEventListener('pointercancel', onDragCancel);
+    if (event.preventDefault) event.preventDefault();
+  }
+
+  function onDragMove(event) {
+    if (!drag) return;
+    if (event.pointerId !== undefined && event.pointerId !== drag.pointerId) return;
+    const dx = event.clientX - drag.startX;
+    const dy = event.clientY - drag.startY;
+    // A real drag (past the tap threshold) dismisses the preview.
+    if (Math.hypot(dx, dy) > TAP_MOVE_PX) hidePreview();
+    // Clamp so the card cannot leave the screen (skip when headless: no layout).
+    let cx = dx;
+    let cy = dy;
+    const r = drag.img.getBoundingClientRect();
+    if (r && (r.width > 0 || r.height > 0)) {
+      cx = Math.max(-r.left, Math.min(window.innerWidth - r.right, dx));
+      cy = Math.max(-r.top, Math.min(window.innerHeight - r.bottom, dy));
+    }
+    drag.img.style.transform = `translate(${cx}px, ${cy}px) rotate(0deg) scale(1.15)`;
+    const over = dragOverEnemy(event.clientX, event.clientY) || dy < -DROP_LIFT_PX;
+    drag.overEnemy = over;
+    enemyArea.classList.toggle('drop-target', over);
+  }
+
+  function endDragCleanup(d) {
+    window.removeEventListener('pointermove', onDragMove);
+    window.removeEventListener('pointerup', onDragEnd);
+    window.removeEventListener('pointercancel', onDragCancel);
+    enemyArea.classList.remove('drop-target');
+    // Snap back home (the CSS transition animates it); a played card is
+    // removed by render() anyway, so this is harmless there too.
+    d.img.classList.remove('dragging');
+    d.img.style.transform = '';
+  }
+
+  function onDragEnd(event) {
+    if (!drag) return;
+    if (event.pointerId !== undefined && event.pointerId !== drag.pointerId) return;
+    const d = drag;
+    drag = null;
+    endDragCleanup(d);
+    const dx = event.clientX - d.startX;
+    const dy = event.clientY - d.startY;
+    const dist = Math.hypot(dx, dy);
+    const dt = Date.now() - d.startTime;
+    if (dist < TAP_MOVE_PX && dt < TAP_TIME_MS) {
+      togglePreview(d.img); // tap: enlarge to read, never play
+      return;
+    }
+    const lifted = d.startY - event.clientY > DROP_LIFT_PX;
+    if (d.overEnemy || lifted) attemptPlay(d.index, d.img);
+    // Otherwise the card simply glides back into the hand (see cleanup).
+  }
+
+  function onDragCancel() {
+    if (!drag) return;
+    const d = drag;
+    drag = null;
+    endDragCleanup(d);
+  }
+
+  handEl.addEventListener('pointerdown', onDragStart);
 
   // --- Win / lose overlay ----------------------------------------------------
   const overlay = el('div', 'overlay hidden');
@@ -315,6 +501,7 @@ export function startCombat(container, opts = {}) {
     // Enemy
     enemyHpFill.style.width = `${Math.max(0, (e.hp / e.maxHp) * 100)}%`;
     enemyHpText.textContent = `${Math.max(0, e.hp)} / ${e.maxHp}`;
+    enemyHourglass.textContent = `⏳ ${state.enemy.turnCount}`;
 
     // Player HUD
     hpFill.style.width = `${Math.max(0, (p.hp / p.maxHp) * 100)}%`;
@@ -330,6 +517,23 @@ export function startCombat(container, opts = {}) {
     actionText.textContent = `${p.action} / ${p.actionCap}`;
     goldText.textContent = `${p.gold}`;
     endTurnBtn.disabled = state.phase !== 'player';
+
+    // Top bar: one gold circle per blessing owned (empty outlines otherwise).
+    blessingDots.innerHTML = '';
+    const owned = p.blessings || [];
+    if (owned.length === 0) {
+      for (let i = 0; i < 3; i++) blessingDots.appendChild(el('span', 'blessing-dot empty'));
+    } else {
+      for (const id of owned) {
+        const dot = el('span', 'blessing-dot', '★');
+        dot.title = BLESSING_NAMES[id] || id;
+        blessingDots.appendChild(dot);
+      }
+    }
+
+    // Deck / discard pile counts.
+    deckPileNum.textContent = String(p.deck.length);
+    discardPileNum.textContent = String(p.discard.length);
 
     // Equipment + counters row (small round icons with the card art).
     equipRow.innerHTML = '';
@@ -441,9 +645,17 @@ export function startCombat(container, opts = {}) {
     if (onExit) onExit();
   }
 
-  // --- Handlers (debounced against double-clicks) ------------------------------
-  function onCardClick(index, imgEl) {
+  // --- Handlers ----------------------------------------------------------------
+  // attemptPlay: the single path from a completed drag to the engine.
+  // Debounced per (hand generation, index): dragging one card twice in a
+  // row plays it once, but two different cards dragged in quick succession
+  // — even if the second lands at the same index after a re-render — both work.
+  function attemptPlay(index, imgEl) {
     if (state.phase !== 'player') { notice(PLAY_DENIED['not-player-turn']); return; }
+    const now = Date.now();
+    if (lastCardPlay.gen === handGen && lastCardPlay.index === index
+        && now - lastCardPlay.time < 350) return;
+    lastCardPlay = { gen: handGen, index, time: now };
     const before = snapshot();
     const result = playCard(state, index);
     if (!result.ok) {
@@ -461,6 +673,7 @@ export function startCombat(container, opts = {}) {
 
   const onEndTurn = debounce(() => {
     if (state.phase !== 'player') return;
+    hidePreview();
     const before = snapshot();
     const result = endTurn(state);
     if (!result.ok) {
