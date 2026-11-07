@@ -222,6 +222,43 @@ export function startCombat(container, opts = {}) {
   const handEl = el('div', 'hand');
   root.appendChild(handEl);
 
+  // --- Enlarged card preview (separate element, pointer-events:none) --------
+  // Hovering a hand card shows its art large in the middle of the screen.
+  // The preview never intercepts clicks, so it cannot cover a neighbour
+  // and swallow that neighbour's click (playtest: one click did nothing).
+  const cardPreview = imgWithFallback('assets/ui/cardback.jpg', 'Card preview');
+  cardPreview.id = 'card-preview';
+  root.appendChild(cardPreview);
+  function hidePreview() { cardPreview.classList.remove('show'); }
+  handEl.addEventListener('mouseover', (event) => {
+    const img = event.target.closest('.hand-card');
+    if (!img) return;
+    cardPreview.src = img.src;
+    cardPreview.classList.add('show');
+  });
+  handEl.addEventListener('mouseout', (event) => {
+    if (event.relatedTarget && handEl.contains(event.relatedTarget)) return;
+    hidePreview();
+  });
+  // Delegated clicks: the listener lives on the hand container, so a click
+  // is never lost when render() rebuilds the hand between mousedown and
+  // mouseup. Debounced per (hand generation, index): a double-click on one
+  // card plays it once, but two different cards in quick succession — even
+  // if the second lands at the same index after a re-render — both work.
+  let handGen = 0;
+  let lastCardPlay = { gen: -1, index: -1, time: 0 };
+  handEl.addEventListener('click', (event) => {
+    const img = event.target.closest('.hand-card');
+    if (!img) return;
+    const index = Number(img.dataset.index);
+    const now = Date.now();
+    if (lastCardPlay.gen === handGen && lastCardPlay.index === index
+        && now - lastCardPlay.time < 350) return;
+    lastCardPlay = { gen: handGen, index, time: now };
+    hidePreview();
+    onCardClick(index, img);
+  });
+
   // --- Win / lose overlay ----------------------------------------------------
   const overlay = el('div', 'overlay hidden');
   const overlayTitle = el('div', 'overlay-title');
@@ -270,6 +307,8 @@ export function startCombat(container, opts = {}) {
 
   // --- Render -----------------------------------------------------------------
   function render() {
+    // The hovered card may be gone after a play; never show stale art.
+    hidePreview();
     const p = state.player;
     const e = state.enemy;
 
@@ -313,6 +352,7 @@ export function startCombat(container, opts = {}) {
     }
 
     // Hand
+    handGen += 1;
     handEl.innerHTML = '';
     const n = p.hand.length;
     p.hand.forEach((cardId, i) => {
@@ -329,10 +369,8 @@ export function startCombat(container, opts = {}) {
       const offset = i - mid;
       img.style.setProperty('--fan-rot', `${offset * 4}deg`);
       img.style.setProperty('--fan-y', `${Math.abs(offset) * 4}px`);
-      // Per-card debounce (a fresh closure per img, like the book rows):
-      // a double-click on one card must not play two cards, but playing
-      // two different cards in quick succession still works.
-      img.addEventListener('click', debounce(onCardClick, 350));
+      // Clicks are handled by the delegated listener on handEl (see setup):
+      // no per-card listener here, so a re-render can never orphan a click.
       handEl.appendChild(img);
     });
 
@@ -353,7 +391,8 @@ export function startCombat(container, opts = {}) {
     const result = isGameOver(state);
     if (!result) return;
     clearTimeout(overlayTimer);
-    // Small delay so the final damage floater is visible first.
+    // Small delay so the final damage floater is visible first — kept short
+    // (350ms) so the win does not feel like the game froze (playtest note).
     overlayTimer = setTimeout(() => {
       if (result === 'won') {
         overlayTitle.textContent = 'Victory!';
@@ -383,7 +422,7 @@ export function startCombat(container, opts = {}) {
         overlayBtnB.onclick = debounce(() => exitToTitle(), 350);
       }
       overlay.classList.remove('hidden');
-    }, 650);
+    }, 350);
   }
 
   function restart() {
@@ -403,14 +442,13 @@ export function startCombat(container, opts = {}) {
   }
 
   // --- Handlers (debounced against double-clicks) ------------------------------
-  function onCardClick(event) {
+  function onCardClick(index, imgEl) {
     if (state.phase !== 'player') { notice(PLAY_DENIED['not-player-turn']); return; }
-    const index = Number(event.currentTarget.dataset.index);
     const before = snapshot();
     const result = playCard(state, index);
     if (!result.ok) {
       notice(PLAY_DENIED[result.reason] || 'That card cannot be played.');
-      const img = event.currentTarget;
+      const img = imgEl;
       img.classList.add('shake');
       setTimeout(() => img.classList.remove('shake'), 350);
       return;
