@@ -242,6 +242,31 @@ test('smithy: first upgrade per chapter is free, the second costs 10 gold', () =
   }
 });
 
+test('smithy: Counter cards are disabled with a note and cannot be upgraded', () => {
+  const { api, container } = mount({
+    pagePlan: [['smithy', 'spring', 'chest']],
+  });
+  try {
+    api.run.gold = 25;
+    api.run.deck.push('parry'); // Counter card — no smithy effect
+    clickPageCard(container, 'smithy');
+    const row = $('.smithy-row[data-card-id="parry"]', container);
+    assert.ok(row, 'Parry should be listed');
+    assert.equal(row.disabled, true);
+    assert.match($('.smithy-note', row).textContent, /Counter cards cannot be upgraded/);
+    row.click(); // disabled: must not spend gold or add an upgrade
+    assert.deepEqual(api.run.upgrades, {});
+    assert.equal(api.run.gold, 25);
+    // A normal card in the same smithy still upgrades for free.
+    const strike = $('.smithy-row[data-card-id="basic-strike"]', container);
+    assert.equal(strike.disabled, false);
+    strike.click();
+    assert.deepEqual(api.run.upgrades, { 'basic-strike': 1 });
+  } finally {
+    api.destroy();
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Boss page, wins, level-up, chapters, victory
 // ---------------------------------------------------------------------------
