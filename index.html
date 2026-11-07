@@ -62,16 +62,45 @@
   }
   #banner.show{opacity:1; transform:translate(-50%,-50%) scale(1);}
 
-  /* ---------- Combat screen (Stage 2) ---------- */
+  /* ---------- Combat screen (Stage 2, layout reworked v0.5) ---------- */
   #combat-root{position:absolute; inset:0;}
-  .enemy-area{position:absolute; top:14px; left:50%; transform:translateX(-50%);
+  /* Top bar (original layout): blessing circles top-left, gold, back arrow. */
+  .combat-topbar{position:absolute; top:0; left:0; right:0; z-index:20;
+    display:flex; align-items:center; gap:14px; padding:8px 14px;
+    background:linear-gradient(rgba(20,16,28,.85), rgba(20,16,28,0));
+    pointer-events:none;}
+  .blessing-dots{display:flex; gap:6px; pointer-events:auto;}
+  .blessing-dot{width:26px; height:26px; border-radius:50%; border:2px solid var(--gold);
+    background:radial-gradient(circle at 35% 30%, #f3e6c0, #c9a227 60%, #8a6d1f);
+    color:#1a1206; font-size:13px; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 2px 6px rgba(0,0,0,.6);}
+  .blessing-dot.empty{background:transparent; border-color:rgba(212,175,55,.4); box-shadow:none;}
+  .topbar-spacer{flex:1;}
+  .topbar-gold{font-size:18px; color:var(--gold); display:flex; align-items:center; gap:6px;
+    text-shadow:0 1px 2px #000; pointer-events:auto;}
+  .topbar-back{pointer-events:auto; font-family:inherit; font-size:18px; cursor:pointer; color:#f3e6c0;
+    background:rgba(20,16,28,.85); border:2px solid var(--panel-border); border-radius:8px; padding:4px 12px;}
+  .topbar-back:hover{border-color:var(--gold);}
+  .enemy-area{position:absolute; top:52px; left:50%; transform:translateX(-50%);
     display:flex; flex-direction:column; align-items:center; gap:6px; width:min(420px, 80vw);}
+  .enemy-area.drop-target .enemy-portrait{
+    box-shadow:0 0 0 3px #35e0d4, 0 0 34px rgba(53,224,212,.8), 0 8px 28px rgba(0,0,0,.7);}
+  .enemy-area.drop-target .enemy-name{
+    box-shadow:0 0 0 2px #35e0d4, 0 0 22px rgba(53,224,212,.55);}
   .enemy-portrait-wrap{position:relative; width:170px; height:170px;}
   .enemy-portrait{width:170px; height:170px; object-fit:cover; border-radius:8px;
     border:3px solid var(--panel-border); box-shadow:0 8px 28px rgba(0,0,0,.7);}
-  .enemy-name{font-size:22px; letter-spacing:.05em; color:#f3e6c0; text-shadow:0 2px 0 #000;}
+  /* Name + Lv on a wooden ribbon/banner below the portrait (original). */
+  .enemy-name{display:flex; align-items:center; gap:8px; font-size:22px; letter-spacing:.05em;
+    color:#f3e6c0; text-shadow:0 2px 0 #000;
+    background:linear-gradient(rgba(60,40,20,.92),rgba(40,26,12,.92));
+    border:2px solid var(--panel-border); border-radius:6px; padding:4px 18px;
+    box-shadow:0 4px 14px rgba(0,0,0,.6);}
   .lv-tag{font-size:13px; color:var(--gold); border:1px solid var(--gold); border-radius:4px;
     padding:1px 7px; vertical-align:middle; letter-spacing:.08em;}
+  .enemy-mana-row{display:flex; align-items:center; gap:8px; width:100%;}
+  .enemy-mana-row .bar{flex:1;}
+  .enemy-hourglass{font-size:15px; color:var(--gold); white-space:nowrap; text-shadow:0 1px 2px #000;}
   .enemy-special{font-size:13px; font-style:italic; color:#f3e6c0; text-align:center;
     background:rgba(10,8,16,.82); border:1px solid #5a4a2f; border-radius:20px; padding:4px 12px;
     max-width:420px;}
@@ -83,12 +112,35 @@
   .mana-fill{background:linear-gradient(#3a7bd5,#1e4f8f);}
   .bar-text{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     font-size:12px; color:#fff; text-shadow:0 1px 2px #000; pointer-events:none;}
-  .combat-log{position:absolute; left:14px; bottom:14px; width:min(300px, 30vw);
-    background:var(--panel); border:1px solid var(--panel-border); border-radius:8px;
-    padding:8px 10px; font-size:13px; line-height:1.45; z-index:5;}
+  /* Combat log: collapsible panel on the left edge (never covers the
+     bottom-left deck/discard arches). The notice line lives on its own
+     slim strip above the hand so denied plays are always visible. */
+  .combat-log{position:absolute; left:0; top:50%; transform:translateY(-50%);
+    width:280px; max-width:78vw; z-index:30;
+    background:var(--panel); border:1px solid var(--panel-border); border-left:none;
+    border-radius:0 8px 8px 0; padding:8px 40px 8px 10px; font-size:13px; line-height:1.45;
+    transition:transform .25s ease;}
+  .combat-log.collapsed{transform:translateY(-50%) translateX(calc(-100% + 34px));}
+  .log-toggle{position:absolute; top:0; right:0; bottom:0; width:34px;
+    writing-mode:vertical-rl; font-family:inherit; font-size:12px; letter-spacing:.14em;
+    color:var(--gold); background:rgba(0,0,0,.35); border:none; border-left:1px solid var(--panel-border);
+    border-radius:0 8px 8px 0; cursor:pointer;}
   .log-title{color:var(--gold); letter-spacing:.08em; font-size:12px; margin-bottom:4px;}
   .log-line{color:var(--ink-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .log-notice{color:#e8a33d; font-style:italic; min-height:18px;}
+  .combat-notice{position:absolute; left:50%; bottom:158px; transform:translateX(-50%);
+    font-size:14px; color:#e8a33d; font-style:italic; text-shadow:0 1px 2px #000;
+    pointer-events:none; z-index:15; min-height:20px; text-align:center; white-space:nowrap;}
+  /* Deck / discard piles: two arch frames, bottom-left (our own design;
+     the original's two bottom-left arches are unlabeled in the footage). */
+  .deck-piles{position:absolute; left:14px; bottom:14px; display:flex; gap:12px; z-index:5;}
+  .pile-arch{width:74px; text-align:center;}
+  .pile-card{width:74px; height:104px; border-radius:37px 37px 8px 8px;
+    border:3px solid var(--panel-border);
+    background:#1a1426 url("assets/ui/cardback.jpg") center/cover;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 8px 24px rgba(0,0,0,.7);}
+  .pile-num{font-size:28px; color:#f3e6c0; text-shadow:0 2px 0 #000, 0 0 12px rgba(0,0,0,.9);}
+  .pile-label{font-size:12px; color:var(--ink-dim); font-style:italic; margin-top:4px;}
   .equip-row{position:absolute; left:50%; bottom:246px; transform:translateX(-50%);
     display:flex; align-items:center; gap:8px; min-height:44px;}
   .equip-empty{font-size:13px; font-style:italic; color:#f3e6c0;
@@ -119,19 +171,26 @@
   .end-turn-btn:disabled{opacity:.45; cursor:default;}
   .hand{position:absolute; left:50%; bottom:8px; transform:translateX(-50%);
     display:flex; align-items:flex-end; justify-content:center; gap:6px; z-index:10;}
-  .hand-card{width:96px; height:146px; object-fit:cover; border-radius:6px; cursor:pointer;
+  .hand-card{width:96px; height:146px; object-fit:cover; border-radius:6px; cursor:grab;
     border:2px solid #3d3220; box-shadow:0 6px 18px rgba(0,0,0,.65);
     transform:rotate(var(--fan-rot, 0deg)) translateY(var(--fan-y, 0px));
-    transform-origin:bottom center;
+    transform-origin:bottom center; touch-action:none; will-change:transform;
     transition:transform .18s ease, box-shadow .18s ease, filter .18s ease;}
   .hand-card.playable{border-color:#7fd4c1;}
   .hand-card.playable:hover,.hand-card.playable:focus-visible{
     transform:rotate(0deg) translateY(-14px) scale(1.12); z-index:20;
     box-shadow:0 0 0 2px #35e0d4, 0 0 26px rgba(53,224,212,.65), 0 18px 40px rgba(0,0,0,.8);}
+  /* While dragging the card follows the pointer exactly (no transition
+     lag); on release the class is removed and it glides back home. */
+  .hand-card.dragging{transition:none; z-index:80; cursor:grabbing;
+    box-shadow:0 0 0 2px #35e0d4, 0 0 30px rgba(53,224,212,.8), 0 18px 40px rgba(0,0,0,.8);}
   /* Enlarged card preview: a separate element with pointer-events:none,
-     so it can never cover a neighbour and steal its click. */
+     so it can never cover a neighbour and steal its click. aspect-ratio +
+     a solid background give the box its size even before the image loads
+     (a zero-height box was one suspect in the missing-preview report). */
   #card-preview{position:absolute; left:50%; top:38%; transform:translate(-50%,-50%);
-    width:min(210px,42vw); z-index:70; pointer-events:none; opacity:0;
+    width:min(210px,42vw); aspect-ratio:342 / 519; object-fit:cover; background:#1a1426;
+    z-index:70; pointer-events:none; opacity:0;
     transition:opacity .15s ease; border-radius:8px; border:2px solid #35e0d4;
     box-shadow:0 0 26px rgba(53,224,212,.65), 0 18px 40px rgba(0,0,0,.8);}
   #card-preview.show{opacity:1;}
@@ -247,8 +306,8 @@
   <section id="game-screen" class="hidden">
     <div id="banner"></div>
   </section>
-  <div id="version">Moonlit Knight v0.4 — Stage 4</div>
+  <div id="version">Moonlit Knight v0.5 — Drag &amp; Drop</div>
 </div>
-<script type="module" src="src/main.js"></script>
+<script type="module" src="src/main.js?v=0.5"></script>
 </body>
 </html>
