@@ -8,6 +8,11 @@
 //     { monsterId: 'thorn-wolf', onExit: () => { /* back to title */ } });
 //   combat.destroy() removes the combat DOM. combat.state is the engine state.
 //
+// Options (Stage 3): onVictory(state) is called from the victory overlay's
+// "Continue" button instead of exiting to the title; onRetry() is called
+// from the defeat overlay's "Retry Battle" button instead of the built-in
+// restart. Without them the Stage 2 behaviour is unchanged.
+//
 // The module is also importable headlessly (node + jsdom) for the smoke test:
 // it touches `document` only inside functions, never at module top level.
 
@@ -109,6 +114,11 @@ export function startCombat(container, opts = {}) {
 
   const state = createGame(monsterId, opts.deckIds || STARTER_DECK, opts);
   const onExit = typeof opts.onExit === 'function' ? opts.onExit : null;
+  // Stage 3: onVictory(state) replaces the placeholder "Next → title" when
+  // the caller runs a book flow; onRetry() replaces the default full-HP
+  // restart when the caller owns the retry (run state, full HP).
+  const onVictory = typeof opts.onVictory === 'function' ? opts.onVictory : null;
+  const onRetry = typeof opts.onRetry === 'function' ? opts.onRetry : null;
 
   const root = el('div');
   root.id = 'combat-root';
@@ -344,18 +354,29 @@ export function startCombat(container, opts = {}) {
     overlayTimer = setTimeout(() => {
       if (result === 'won') {
         overlayTitle.textContent = 'Victory!';
-        // Gold/EXP line: placeholder reward until Stage 3 wires real rewards.
-        overlayLine.textContent = `You defeated ${state.enemy.name}.  Gold: ${state.player.gold}  ·  +10 EXP`;
-        overlayBtnA.textContent = 'Next';
-        overlayBtnB.textContent = 'Fight Again';
-        overlayBtnA.onclick = debounce(() => exitToTitle(), 350);
-        overlayBtnB.onclick = debounce(() => restart(), 350);
+        if (onVictory) {
+          // Book flow: rewards + level-up live in the caller's onVictory.
+          overlayLine.textContent = `You defeated ${state.enemy.name}.`;
+          overlayBtnA.textContent = 'Continue';
+          overlayBtnB.textContent = 'Title';
+          overlayBtnA.onclick = debounce(() => onVictory(state), 350);
+          overlayBtnB.onclick = debounce(() => exitToTitle(), 350);
+        } else {
+          overlayLine.textContent = `You defeated ${state.enemy.name}.  Gold: ${state.player.gold}  ·  +10 EXP`;
+          overlayBtnA.textContent = 'Next';
+          overlayBtnB.textContent = 'Fight Again';
+          overlayBtnA.onclick = debounce(() => exitToTitle(), 350);
+          overlayBtnB.onclick = debounce(() => restart(), 350);
+        }
       } else {
         overlayTitle.textContent = 'Defeated…';
         overlayLine.textContent = `${state.enemy.name} stands over you. The book is not finished yet.`;
         overlayBtnA.textContent = 'Retry Battle';
         overlayBtnB.textContent = 'Title';
-        overlayBtnA.onclick = debounce(() => restart(), 350);
+        overlayBtnA.onclick = debounce(() => {
+          if (onRetry) onRetry();
+          else restart();
+        }, 350);
         overlayBtnB.onclick = debounce(() => exitToTitle(), 350);
       }
       overlay.classList.remove('hidden');
@@ -365,8 +386,10 @@ export function startCombat(container, opts = {}) {
   function restart() {
     // A fresh fight vs the same monster (full HP retry). The new combat
     // replaces this one in the container; the old root is removed by
-    // startCombat, so this api object is retired with it.
+    // startCombat, so this api object is retired with it. All run opts
+    // (deck, blessings, upgrades, HP, slots) carry over to the new fight.
     startCombat(container, {
+      ...opts,
       monsterId, deckIds: opts.deckIds || STARTER_DECK, onExit,
     });
   }
