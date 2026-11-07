@@ -21,9 +21,9 @@
 // "Takes damage" triggers (Chainmail Vest, Thorn Guard, Blood Oath Blade)
 // fire whenever raw damage > 0, even if Armor absorbed all of it.
 
-import { getCard, STARTER_DECK } from './cards.js?v=0.7';
-import { getMonster } from './monsters.js?v=0.7';
-import { mulberry32, shuffle } from './rng.js?v=0.7';
+import { getCard, STARTER_DECK } from './cards.js?v=0.8';
+import { getMonster } from './monsters.js?v=0.8';
+import { mulberry32, shuffle } from './rng.js?v=0.8';
 
 export const CONFIG = {
   playerStartHp: 30,
