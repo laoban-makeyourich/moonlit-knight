@@ -25,7 +25,7 @@
   /* ---------- Title screen ---------- */
   #title-screen{
     flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:18px; padding:24px; text-align:center;
+    gap:18px; padding:24px; text-align:center; overflow-y:auto;
     background:radial-gradient(ellipse at center, rgba(13,10,20,.25) 0%, rgba(13,10,20,.78) 100%);
   }
   #title-screen h1{
@@ -33,7 +33,7 @@
     text-shadow:0 2px 0 #000, 0 0 28px rgba(212,175,55,.45);
   }
   #title-screen .subtitle{font-style:italic; color:var(--ink-dim); font-size:clamp(15px,2.4vw,20px);}
-  #hero{width:min(300px, 62vw); border-radius:10px; border:3px solid var(--panel-border);
+  #hero{width:min(300px, 62vw, 56vh); border-radius:10px; border:3px solid var(--panel-border);
     box-shadow:0 12px 40px rgba(0,0,0,.7); will-change:transform;}
   .btn{
     font-family:inherit; font-size:20px; letter-spacing:.06em; cursor:pointer;
@@ -87,8 +87,8 @@
     box-shadow:0 0 0 3px #35e0d4, 0 0 34px rgba(53,224,212,.8), 0 8px 28px rgba(0,0,0,.7);}
   .enemy-area.drop-target .enemy-name{
     box-shadow:0 0 0 2px #35e0d4, 0 0 22px rgba(53,224,212,.55);}
-  .enemy-portrait-wrap{position:relative; width:170px; height:170px;}
-  .enemy-portrait{width:170px; height:170px; object-fit:cover; border-radius:8px;
+  .enemy-portrait-wrap{position:relative; width:min(170px, 26vh); height:min(170px, 26vh);}
+  .enemy-portrait{width:100%; height:100%; object-fit:cover; border-radius:8px;
     border:3px solid var(--panel-border); box-shadow:0 8px 28px rgba(0,0,0,.7);}
   /* Name + Lv on a wooden ribbon/banner below the portrait (original). */
   .enemy-name{display:flex; align-items:center; gap:8px; font-size:22px; letter-spacing:.05em;
@@ -165,16 +165,16 @@
   .hud-action,.hud-gold{display:flex; align-items:center; gap:5px; font-size:17px; white-space:nowrap;}
   .hourglass{color:var(--gold);}
   .player-area{position:absolute; right:18px; bottom:14px; display:flex; align-items:flex-end; gap:12px;}
-  .player-portrait-wrap{position:relative; width:120px; height:150px;}
-  .player-portrait{width:120px; height:150px; object-fit:cover;
-    border:3px solid var(--panel-border); border-radius:60px 60px 8px 8px;
+  .player-portrait-wrap{position:relative; width:clamp(84px, 22vh, 120px); aspect-ratio:120/150;}
+  .player-portrait{width:100%; height:100%; object-fit:cover;
+    border:3px solid var(--panel-border); border-radius:999px 999px 8px 8px;
     box-shadow:0 8px 24px rgba(0,0,0,.7);}
   .end-turn-btn{background:linear-gradient(#7bc96a,#3f8f2f); border-color:#245c18;
     box-shadow:0 4px 0 #245c18, 0 8px 22px rgba(0,0,0,.55); padding:12px 26px; font-size:18px;}
   .end-turn-btn:disabled{opacity:.45; cursor:default;}
   .hand{position:absolute; left:50%; bottom:8px; transform:translateX(-50%);
     display:flex; align-items:flex-end; justify-content:center; gap:6px; z-index:10;}
-  .hand-card{width:96px; height:146px; object-fit:cover; border-radius:6px; cursor:grab;
+  .hand-card{width:clamp(64px, 16vh, 96px); aspect-ratio:342/519; height:auto; object-fit:cover; border-radius:6px; cursor:grab;
     border:2px solid #3d3220; box-shadow:0 6px 18px rgba(0,0,0,.65);
     transform:rotate(var(--fan-rot, 0deg)) translateY(var(--fan-y, 0px));
     transform-origin:bottom center; touch-action:none; will-change:transform;
@@ -192,7 +192,7 @@
      a solid background give the box its size even before the image loads
      (a zero-height box was one suspect in the missing-preview report). */
   #card-preview{position:absolute; left:50%; top:38%; transform:translate(-50%,-50%);
-    width:min(210px,42vw); aspect-ratio:342 / 519; object-fit:cover; background:#1a1426;
+    width:min(210px,42vw,52vh); aspect-ratio:342 / 519; object-fit:cover; background:#1a1426;
     z-index:70; pointer-events:none; opacity:0;
     transition:opacity .15s ease; border-radius:8px; border:2px solid #35e0d4;
     box-shadow:0 0 26px rgba(53,224,212,.65), 0 18px 40px rgba(0,0,0,.8);}
@@ -232,7 +232,7 @@
   .book-pages{position:relative; z-index:2; flex:1; display:flex; align-items:center;
     justify-content:center; gap:22px; flex-wrap:wrap; padding:24px;}
   .book-hint{position:relative; z-index:2; padding:0 18px 18px; font-style:italic; color:var(--ink-dim); font-size:15px;}
-  .page-card{width:210px; background:var(--panel); border:2px solid var(--panel-border);
+  .page-card{width:clamp(150px, 22vw, 210px); background:var(--panel); border:2px solid var(--panel-border);
     border-radius:10px; padding:0 0 12px; cursor:pointer; overflow:hidden;
     font-family:inherit; color:var(--ink); text-align:center;
     box-shadow:0 8px 26px rgba(0,0,0,.6);
@@ -241,7 +241,7 @@
     box-shadow:0 0 0 2px rgba(212,175,55,.5), 0 16px 34px rgba(0,0,0,.75);}
   .page-card.boss{border-color:#c0392b; box-shadow:0 0 0 2px rgba(192,57,43,.55), 0 8px 26px rgba(0,0,0,.6);}
   .page-card.boss:hover{border-color:#ff6b5a;}
-  .page-art{width:100%; height:240px; object-fit:cover; display:block;}
+  .page-art{width:100%; height:clamp(130px, 34vh, 240px); object-fit:cover; display:block;}
   .page-title{font-size:20px; color:#f3e6c0; margin-top:10px; letter-spacing:.04em;}
   .page-sub{font-size:13px; color:var(--ink-dim); font-style:italic; margin-top:4px; padding:0 10px; line-height:1.4;}
 
@@ -294,6 +294,21 @@
   .smithy-cost{font-size:15px; color:var(--gold); white-space:nowrap;}
   .victory-stats{display:flex; flex-direction:column; gap:6px; font-size:18px; color:var(--ink);}
   .victory-stat{letter-spacing:.04em;}
+
+  /* ---------- Landscape-only: rotate prompt in portrait ---------- */
+  /* The original game plays in landscape (16:9). On a portrait screen
+     the game hides behind this prompt until the device is turned. */
+  #rotate-overlay{position:fixed; inset:0; z-index:999; display:none;
+    flex-direction:column; align-items:center; justify-content:center; gap:18px;
+    background:#0d0a14 url("assets/ui/bg-table.jpg") center/cover no-repeat;
+    text-align:center; padding:24px;}
+  #rotate-overlay .rotate-phone{font-size:64px; animation:rotate-hint 2.2s ease-in-out infinite;}
+  @keyframes rotate-hint{0%,20%{transform:rotate(0deg);} 55%,100%{transform:rotate(90deg);}}
+  #rotate-overlay .rotate-title{font-size:clamp(24px,6vw,34px); color:#f3e6c0; letter-spacing:.06em;}
+  #rotate-overlay .rotate-text{font-size:clamp(15px,4vw,19px); color:var(--ink-dim); font-style:italic; line-height:1.6;}
+  @media (orientation: portrait){
+    #rotate-overlay{display:flex;}
+  }
 </style>
 </head>
 <body>
@@ -309,8 +324,13 @@
   <section id="game-screen" class="hidden">
     <div id="banner"></div>
   </section>
-  <div id="version">Moonlit Knight v0.5 — Drag &amp; Drop</div>
+  <div id="rotate-overlay" role="dialog" aria-label="Rotate your device">
+    <div class="rotate-phone">📱</div>
+    <div class="rotate-title">Xoay ngang điện thoại</div>
+    <div class="rotate-text">Moonlit Knight chơi theo chiều ngang, giống bản gốc.<br>Xoay điện thoại của bạn để bắt đầu.</div>
+  </div>
+  <div id="version">Moonlit Knight v0.7 — Landscape</div>
 </div>
-<script type="module" src="src/main.js?v=0.6"></script>
+<script type="module" src="src/main.js?v=0.7"></script>
 </body>
 </html>
