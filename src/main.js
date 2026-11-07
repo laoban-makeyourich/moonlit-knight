@@ -2,7 +2,7 @@
 // Boot: preload first-screen art, enable the Start button, hand off to the
 // book flow (src/book.js) via window.MoonlitKnight.start().
 
-import { startRun } from './book.js';
+import { startRun } from './book.js?v=0.5';
 
 const $ = (sel) => document.querySelector(sel);
 
