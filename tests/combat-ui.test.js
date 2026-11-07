@@ -152,6 +152,73 @@ test('victory overlay: Fight Again starts a fresh fight', async () => {
   }
 });
 
+test('victory overlay with onVictory: Continue calls onVictory, Title exits', async () => {
+  const container = document.getElementById('game-screen');
+  let exited = false;
+  let victoryState = null;
+  const api = startCombat(container, {
+    monsterId: 'thorn-wolf',
+    deckIds: TEN_STRIKES,
+    seed: 42,
+    onExit: () => { exited = true; },
+    onVictory: (state) => { victoryState = state; },
+  });
+  try {
+    api.state.enemy.hp = 3;
+    api.playHandIndex(0); // Basic Strike: 3 damage -> enemy dead
+    assert.equal(api.state.phase, 'won');
+    await sleep(800);
+    const overlay = $('.overlay', container);
+    assert.equal(overlay.classList.contains('hidden'), false);
+    assert.equal($('.overlay-title', container).textContent, 'Victory!');
+    const [continueBtn, titleBtn] = $$('.overlay-btns .btn', container);
+    assert.equal(continueBtn.textContent, 'Continue');
+    assert.equal(titleBtn.textContent, 'Title');
+    continueBtn.click();
+    await sleep(50);
+    assert.ok(victoryState, 'onVictory should have been called');
+    assert.equal(victoryState.phase, 'won');
+    assert.equal(exited, false); // Continue is not an exit
+    // Title still exits.
+    titleBtn.click();
+    await sleep(50);
+    assert.equal(exited, true);
+    assert.equal(container.querySelector('#combat-root'), null);
+  } finally {
+    const root = container.querySelector('#combat-root');
+    if (root) root.remove();
+  }
+});
+
+test('defeat overlay with onRetry: Retry Battle calls onRetry instead of restarting', async () => {
+  const container = document.getElementById('game-screen');
+  let retried = false;
+  const api = startCombat(container, {
+    monsterId: 'thorn-wolf',
+    deckIds: TEN_STRIKES,
+    seed: 42,
+    onExit: () => {},
+    onRetry: () => { retried = true; },
+  });
+  try {
+    api.state.player.hp = 1;
+    $('.end-turn-btn', container).click(); // enemy hits for 7 -> dead
+    assert.equal(api.state.phase, 'lost');
+    await sleep(800);
+    assert.equal($('.overlay-title', container).textContent, 'Defeated…');
+    const [retryBtn] = $$('.overlay-btns .btn', container);
+    assert.equal(retryBtn.textContent, 'Retry Battle');
+    retryBtn.click();
+    await sleep(50);
+    assert.equal(retried, true);
+    // No automatic restart: the same (lost) combat is still mounted.
+    assert.equal(container.querySelector('#combat-root'), api.root);
+    assert.equal(api.state.phase, 'lost');
+  } finally {
+    api.destroy();
+  }
+});
+
 test('defeat overlay: Retry Battle restarts at full HP; Title exits', async () => {
   const { api, container } = mount();
   try {
