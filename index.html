@@ -309,6 +309,41 @@
   @media (orientation: portrait){
     #rotate-overlay{display:flex;}
   }
+
+  /* ---------- Short landscape screens (phones held sideways) ---------- */
+  /* The middle band (equipment row / HUD / notice) uses fixed bottom
+     offsets tuned for desktop heights; on a ~390px-tall phone screen
+     those offsets land on top of the enemy portrait. Below 640px the
+     whole layout compresses: enemy smaller, equipment moves to a column
+     on the left edge, HUD sits just above the hand, the notice tucks
+     between enemy and HUD, and the title hides its footer text. */
+  #game-screen:not(.hidden) ~ #version{display:none;}
+  @media (max-height: 640px){
+    #title-screen{gap:10px; padding:12px;}
+    #title-screen h1{font-size:32px;}
+    #title-screen .subtitle{font-size:14px;}
+    #hero{width:min(300px, 62vw, 34vh);}
+    #title-screen .foot{display:none;}
+    .book-pages{padding:12px; gap:14px;}
+    .page-art{height:clamp(110px, 30vh, 240px);}
+    .book-hint{padding-bottom:10px;}
+    .combat-topbar{padding:6px 12px;}
+    .enemy-area{top:64px; gap:4px;}
+    .enemy-portrait-wrap{width:min(170px, 18vh); height:min(170px, 18vh);}
+    .enemy-name{font-size:19px; padding:2px 14px;}
+    .enemy-special{font-size:12px; padding:2px 10px;}
+    .equip-row{left:44px; top:50%; bottom:auto; transform:translateY(-50%);
+      flex-direction:column; gap:6px; min-height:0;}
+    .equip-chip{width:32px; height:32px;}
+    .equip-empty,.equip-slots{display:none;}
+    .hud{bottom:99px; padding:6px 12px;}
+    .combat-notice{bottom:141px;}
+    .hand-card{width:clamp(52px, 14vh, 96px);}
+    .pile-card{width:64px; height:88px;}
+    .pile-num{font-size:22px;}
+    .player-portrait-wrap{width:clamp(76px, 20vh, 120px);}
+    #card-preview{width:min(210px, 42vw, 44vh); top:50%;}
+  }
 </style>
 </head>
 <body>
@@ -329,8 +364,8 @@
     <div class="rotate-title">Xoay ngang điện thoại</div>
     <div class="rotate-text">Moonlit Knight chơi theo chiều ngang, giống bản gốc.<br>Xoay điện thoại của bạn để bắt đầu.</div>
   </div>
-  <div id="version">Moonlit Knight v0.7 — Landscape</div>
+  <div id="version">Moonlit Knight v0.8 — Landscape</div>
 </div>
-<script type="module" src="src/main.js?v=0.7"></script>
+<script type="module" src="src/main.js?v=0.8"></script>
 </body>
 </html>
