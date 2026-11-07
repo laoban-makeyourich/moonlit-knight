@@ -470,13 +470,16 @@ test('preview wiring: the real index.html styles the preview and busts the JS ca
   assert.match(html, /#card-preview\.show\{[^}]*opacity:\s*1/);
   // Every module URL carries the same ?v= so a new release is a fresh
   // fetch (the missing-preview retest ran a cached pre-fix combat-ui.js).
-  assert.match(html, /src="src\/main\.js\?v=0\.5"/);
+  // The version itself lives in index.html; all imports must match it.
+  const vMatch = html.match(/src="src\/main\.js\?v=([\d.]+)"/);
+  assert.ok(vMatch, 'index.html loads main.js with a ?v= cache-buster');
+  const version = vMatch[1];
   for (const src of ['src/main.js', 'src/book.js', 'src/combat-ui.js', 'src/engine.js']) {
     const js = readFileSync(new URL(`../${src}`, import.meta.url), 'utf8');
     for (const line of js.split('\n')) {
       if (!line.trimStart().startsWith('import ')) continue; // skip comments
       for (const m of line.matchAll(/from\s+'(\.\/[^']+)'/g)) {
-        assert.ok(m[1].endsWith('?v=0.5'), `${src} imports ${m[1]} without the cache-buster`);
+        assert.ok(m[1].endsWith(`?v=${version}`), `${src} imports ${m[1]} without the cache-buster`);
       }
     }
   }
@@ -495,6 +498,41 @@ test('preview wiring: the mounted preview is a real img with the card art', () =
     first.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
     assert.equal(preview.classList.contains('show'), true);
     assert.ok(preview.src.includes('basic-strike'));
+  } finally {
+    api.destroy();
+  }
+});
+
+// --- Playtest fixes v0.5.1: tap pins preview, empty equip slots ----------
+test('tap pins preview: stays after pointerup and mouseout, second tap hides it', () => {
+  const { api, container } = mount();
+  try {
+    const preview = container.querySelector('#card-preview');
+    const first = $$('.hand-card', container)[0];
+    const down = new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 7, clientX: 100, clientY: 900 });
+    const up = new PointerEvent('pointerup', { bubbles: true, button: 0, pointerId: 7, clientX: 100, clientY: 900 });
+    first.dispatchEvent(down);
+    window.dispatchEvent(up);
+    assert.equal(preview.classList.contains('show'), true, 'tap shows the preview');
+    assert.equal(api.state.enemy.hp, 20, 'tap does not play the card');
+    // Pointer leaves the hand: a tap-pinned preview must stay.
+    first.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body }));
+    assert.equal(preview.classList.contains('show'), true, 'pinned preview survives mouseout');
+    // Tap the same card again: dismisses it.
+    first.dispatchEvent(down);
+    window.dispatchEvent(up);
+    assert.equal(preview.classList.contains('show'), false, 'second tap hides the preview');
+  } finally {
+    api.destroy();
+  }
+});
+
+test('equipment row: free slots render as empty circles before anything is equipped', () => {
+  const { api, container } = mount();
+  try {
+    assert.equal($$('.equip-chip.empty', container).length, 1, 'one empty slot circle at start');
+    assert.ok($('.equip-empty', container).textContent.includes('No equipment yet'));
+    assert.ok($('.equip-slots', container).textContent.includes('Slots: 0/1'));
   } finally {
     api.destroy();
   }
