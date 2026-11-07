@@ -33,6 +33,11 @@ merchant, take fairy blessings, and face the Grave Witch at the end.
 | Equipment slots (start) | 1 |
 | Monster HP (proposed) | Thorn Wolf 20 · Rat King 33 · Hollow Stag 28 · Mire Wisp 25 · Mire Crocodile (boss) 60 · Grave Witch (final boss) 100 |
 
+## Design notes
+
+- **Smithy dual bonus.** A smithy upgrade gives +3 Armor per level to cards that gain Armor and +1 card drawn per level to cards that draw — a card that does both gets both bonuses (e.g. an upgraded Bulwark Stance gains +3 Armor *and* draws +1 extra card per upgrade level).
+- **Counter cards cannot be upgraded.** Parry and Thorn Guard get no effect from smithy upgrades, so the smithy disables their rows with a "Counter cards cannot be upgraded" note instead of taking your gold.
+
 ## Run locally
 
 ```sh
