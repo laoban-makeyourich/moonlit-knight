@@ -1,6 +1,8 @@
-// Moonlit Knight — main entry (Stage 0 skeleton).
+// Moonlit Knight — main entry (Stage 2).
 // Boot: preload first-screen art, enable the Start button, hand off to the
-// game flow (Stage 2/3) via window.MoonlitKnight.start().
+// combat UI (src/combat-ui.js) via window.MoonlitKnight.start().
+
+import { startCombat } from './combat-ui.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -85,11 +87,17 @@ async function boot() {
 
 window.MoonlitKnight = {
   start() {
-    // Stage 2/3 replaces this with the real flow.
+    // Stage 2: a real fight vs Thorn Wolf. Stage 3 replaces the fixed
+    // monster with the chapter/book flow.
     $('#title-screen').classList.add('hidden');
     $('#game-screen').classList.remove('hidden');
-    showBanner('Your Turn');
-    console.info('[MoonlitKnight] Stage 0 skeleton — combat & book flow arrive in Stages 2–3.');
+    startCombat($('#game-screen'), {
+      monsterId: 'thorn-wolf',
+      onExit() {
+        $('#game-screen').classList.add('hidden');
+        $('#title-screen').classList.remove('hidden');
+      },
+    });
   },
   showBanner,
   debounce,
