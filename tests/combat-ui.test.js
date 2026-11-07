@@ -258,3 +258,55 @@ test('defeat overlay: Retry Battle restarts at full HP; Title exits', async () =
     if (root) root.remove();
   }
 });
+
+// --- Playtest fixes (2026-11-07): hover preview, delegated clicks ---------
+test('hover preview: mouseover shows a separate preview, mouseout hides it', () => {
+  const { api, container } = mount();
+  try {
+    const preview = container.querySelector('#card-preview');
+    assert.ok(preview, 'preview element exists');
+    assert.equal(preview.classList.contains('show'), false);
+    const first = $$('.hand-card', container)[0];
+    first.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    assert.equal(preview.classList.contains('show'), true);
+    assert.ok(preview.src.includes('basic-strike'), 'preview shows the hovered card art');
+    first.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body }));
+    assert.equal(preview.classList.contains('show'), false);
+  } finally {
+    api.destroy();
+  }
+});
+
+test('delegated clicks: two different cards in quick succession both play', () => {
+  const { api, container } = mount();
+  try {
+    const before = api.state.enemy.hp;
+    $$('.hand-card', container)[0].click();
+    assert.equal(api.state.enemy.hp, before - 3);
+    // The hand re-rendered; immediately click the card now at index 0.
+    // Same index, new generation — must NOT be swallowed by the debounce.
+    $$('.hand-card', container)[0].click();
+    assert.equal(api.state.enemy.hp, before - 6);
+  } finally {
+    api.destroy();
+  }
+});
+
+test('delegated clicks: double-click on one card plays it once', () => {
+  const { api, container } = mount();
+  try {
+    // Force Second Wind to the front of the hand so no draw luck is needed.
+    api.state.player.hand = ['second-wind', 'basic-strike', 'basic-strike', 'basic-strike', 'basic-strike'];
+    api.state.player.action = 0;
+    api.render();
+    const first = $$('.hand-card', container).find((img) => img.title.startsWith('Second Wind'));
+    assert.ok(first, 'Second Wind is in hand');
+    const hpBefore = api.state.enemy.hp;
+    first.click();
+    first.click();
+    assert.equal(api.state.enemy.hp, hpBefore, 'failed card deals no damage twice');
+    assert.equal($$('.hand-card.shake', container).length, 1, 'exactly one shake');
+  } finally {
+    api.destroy();
+  }
+});
