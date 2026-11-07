@@ -329,7 +329,10 @@ export function startCombat(container, opts = {}) {
       const offset = i - mid;
       img.style.setProperty('--fan-rot', `${offset * 4}deg`);
       img.style.setProperty('--fan-y', `${Math.abs(offset) * 4}px`);
-      img.addEventListener('click', onCardClick);
+      // Per-card debounce (a fresh closure per img, like the book rows):
+      // a double-click on one card must not play two cards, but playing
+      // two different cards in quick succession still works.
+      img.addEventListener('click', debounce(onCardClick, 350));
       handEl.appendChild(img);
     });
 
