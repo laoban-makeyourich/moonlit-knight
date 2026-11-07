@@ -1,1 +1,10 @@
-{"description":"Moonlit Knight — a turn-based storybook deck-builder (plain static files, no build step).","name":"moonlit-knight","private":true,"scripts":{"test":"node --test tests/engine.test.js tests/combat-ui.test.js tests/blessings.test.js tests/book.test.js"},"type":"module","version":"0.1.0"}
+{
+  "description": "Moonlit Knight \u2014 a turn-based storybook deck-builder (plain static files, no build step).",
+  "name": "moonlit-knight",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/engine.test.js tests/combat-ui.test.js tests/blessings.test.js tests/book.test.js tests/orientation.test.js"
+  },
+  "type": "module",
+  "version": "0.1.0"
+}
