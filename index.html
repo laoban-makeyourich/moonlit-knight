@@ -145,6 +145,80 @@
     text-shadow:0 2px 0 #000, 0 0 30px rgba(212,175,55,.5);}
   .overlay-line{font-size:18px; color:var(--ink-dim); font-style:italic;}
   .overlay-btns{display:flex; gap:16px; flex-wrap:wrap; justify-content:center;}
+
+  /* ---------- Book / chapter screen (Stage 3) ---------- */
+  #book-root{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;}
+  .book-bg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;}
+  .book-topbar{position:relative; z-index:2; width:100%; display:flex; align-items:center;
+    justify-content:center; gap:26px; flex-wrap:wrap;
+    background:var(--panel); border-bottom:2px solid var(--panel-border);
+    padding:10px 18px; font-size:18px; letter-spacing:.04em;}
+  .book-topbar .book-gold{color:var(--gold);}
+  .book-topbar .book-hp{color:#ff8d7a;}
+  .book-topbar .book-chapter{color:#f3e6c0; font-weight:bold;}
+  .book-topbar .book-pages-left{color:var(--ink-dim); font-style:italic;}
+  .book-pages{position:relative; z-index:2; flex:1; display:flex; align-items:center;
+    justify-content:center; gap:22px; flex-wrap:wrap; padding:24px;}
+  .book-hint{position:relative; z-index:2; padding:0 18px 18px; font-style:italic; color:var(--ink-dim); font-size:15px;}
+  .page-card{width:210px; background:var(--panel); border:2px solid var(--panel-border);
+    border-radius:10px; padding:0 0 12px; cursor:pointer; overflow:hidden;
+    font-family:inherit; color:var(--ink); text-align:center;
+    box-shadow:0 8px 26px rgba(0,0,0,.6);
+    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;}
+  .page-card:hover{transform:translateY(-8px); border-color:var(--gold);
+    box-shadow:0 0 0 2px rgba(212,175,55,.5), 0 16px 34px rgba(0,0,0,.75);}
+  .page-card.boss{border-color:#c0392b; box-shadow:0 0 0 2px rgba(192,57,43,.55), 0 8px 26px rgba(0,0,0,.6);}
+  .page-card.boss:hover{border-color:#ff6b5a;}
+  .page-art{width:100%; height:240px; object-fit:cover; display:block;}
+  .page-title{font-size:20px; color:#f3e6c0; margin-top:10px; letter-spacing:.04em;}
+  .page-sub{font-size:13px; color:var(--ink-dim); font-style:italic; margin-top:4px; padding:0 10px; line-height:1.4;}
+
+  /* ---------- Book modal (shop / events / smithy / level-up / victory) ---------- */
+  .book-modal{position:absolute; inset:0; z-index:50; display:flex; align-items:center;
+    justify-content:center; background:rgba(10,8,16,.72); padding:20px;
+    opacity:1; transition:opacity .2s ease;}
+  .book-modal.hidden{opacity:0; pointer-events:none;}
+  .modal-panel{width:min(680px, 94vw); max-height:92%; overflow-y:auto;
+    background:var(--panel); border:2px solid var(--panel-border); border-radius:12px;
+    padding:20px 22px; display:flex; flex-direction:column; align-items:center; gap:12px;
+    box-shadow:0 18px 50px rgba(0,0,0,.8); text-align:center;}
+  .modal-art{width:100%; max-height:220px; object-fit:cover; border-radius:8px;
+    border:2px solid var(--panel-border);}
+  .modal-title{font-size:28px; color:#f3e6c0; letter-spacing:.05em;}
+  .modal-text{font-size:15px; color:var(--ink-dim); font-style:italic; line-height:1.5;}
+  .modal-row{display:flex; gap:14px; flex-wrap:wrap; justify-content:center;}
+  .modal-notice{color:#e8a33d; font-style:italic; min-height:20px; font-size:14px;}
+  .shop-grid{display:flex; gap:14px; flex-wrap:wrap; justify-content:center;}
+  .shop-card{width:180px; background:rgba(0,0,0,.35); border:2px solid var(--panel-border);
+    border-radius:8px; padding:0 0 10px; cursor:pointer; font-family:inherit; color:var(--ink);
+    transition:transform .15s ease, border-color .15s ease;}
+  .shop-card:hover{transform:translateY(-4px); border-color:var(--gold);}
+  .shop-card.sold{opacity:.45; cursor:default;}
+  .shop-card-art{width:100%; height:150px; object-fit:cover; display:block; border-radius:6px 6px 0 0;}
+  .shop-card-name{font-size:16px; color:#f3e6c0; margin-top:8px;}
+  .shop-card-text{font-size:12px; color:var(--ink-dim); font-style:italic; padding:4px 8px 0; line-height:1.35; min-height:32px;}
+  .shop-card-price{font-size:15px; color:var(--gold); margin-top:6px;}
+  .blessing-btn,.levelup-option{width:100%; background:rgba(0,0,0,.35);
+    border:2px solid var(--panel-border); border-radius:8px; padding:12px 16px;
+    cursor:pointer; font-family:inherit; color:var(--ink); text-align:left;
+    transition:transform .15s ease, border-color .15s ease;}
+  .blessing-btn:hover,.levelup-option:hover{transform:translateY(-2px); border-color:var(--gold);}
+  .blessing-btn:disabled{opacity:.5; cursor:default; transform:none;}
+  .blessing-name,.levelup-name{font-size:18px; color:#f3e6c0;}
+  .blessing-text,.levelup-text{font-size:14px; color:var(--ink-dim); font-style:italic; margin-top:3px; line-height:1.4;}
+  .levelup-option{display:flex; flex-direction:column; align-items:center; text-align:center;}
+  .levelup-thumb{width:110px; height:168px; object-fit:cover; border-radius:6px; border:2px solid var(--panel-border);}
+  .smithy-list{width:100%; display:flex; flex-direction:column; gap:6px; max-height:300px; overflow-y:auto;}
+  .smithy-row{width:100%; display:flex; align-items:center; gap:12px;
+    background:rgba(0,0,0,.35); border:1px solid var(--panel-border); border-radius:8px;
+    padding:6px 12px 6px 6px; cursor:pointer; font-family:inherit; color:var(--ink);
+    transition:transform .15s ease, border-color .15s ease;}
+  .smithy-row:hover{transform:translateX(4px); border-color:var(--gold);}
+  .smithy-thumb{width:40px; height:60px; object-fit:cover; border-radius:4px;}
+  .smithy-name{flex:1; text-align:left; font-size:16px; color:#f3e6c0;}
+  .smithy-cost{font-size:15px; color:var(--gold); white-space:nowrap;}
+  .victory-stats{display:flex; flex-direction:column; gap:6px; font-size:18px; color:var(--ink);}
+  .victory-stat{letter-spacing:.04em;}
 </style>
 </head>
 <body>
@@ -160,7 +234,7 @@
   <section id="game-screen" class="hidden">
     <div id="banner"></div>
   </section>
-  <div id="version">Moonlit Knight v0.2 — Stage 2</div>
+  <div id="version">Moonlit Knight v0.3 — Stage 3</div>
 </div>
 <script type="module" src="src/main.js"></script>
 </body>
