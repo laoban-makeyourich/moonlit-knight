@@ -59,10 +59,10 @@ Or play on GitHub Pages: https://laoban-makeyourich.github.io/moonlit-knight/
 - **Stage 2** — combat UI (DOM, no framework; CSS transform/opacity animations only).
 - **Stage 3** — book/chapter flow, shops, blessings, events, level-ups, bosses (run `npm test` — engine, combat UI, blessings and book tests, all green).
 - **Stage 4** — performance + stability pass (no console errors, lazy images, debounced buttons).
-- **v0.5** — combat layout reworked to match the original game's arrangement
+- **v0.6** — combat layout reworked to match the original game's arrangement
   (top bar, enemy ribbon, bottom-centre HUD, deck/discard arches); cards are
   now played by drag & drop, tap only enlarges. All module URLs carry
-  `?v=0.5` — bump the version in every `?v=` specifier (index.html script
+  `?v=0.6` — bump the version in every `?v=` specifier (index.html script
   tag + all `from './….js?v=…'` imports) on each release, or browsers may
   keep running a cached pre-fix module while the CSS is already new.
 
