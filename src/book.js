@@ -18,11 +18,11 @@
 // (a queue of page arrays dealt instead of random ones), `combatStarter`
 // (defaults to the real startCombat from combat-ui.js).
 
-import { startCombat } from './combat-ui.js?v=0.5';
-import { CARDS, getCard, STARTER_DECK } from './cards.js?v=0.5';
-import { getMonster } from './monsters.js?v=0.5';
-import { CONFIG } from './engine.js?v=0.5';
-import { mulberry32, shuffle } from './rng.js?v=0.5';
+import { startCombat } from './combat-ui.js?v=0.6';
+import { CARDS, getCard, STARTER_DECK } from './cards.js?v=0.6';
+import { getMonster } from './monsters.js?v=0.6';
+import { CONFIG } from './engine.js?v=0.6';
+import { mulberry32, shuffle } from './rng.js?v=0.6';
 
 const CARDBACK = 'assets/ui/cardback.jpg';
 
