@@ -29,9 +29,9 @@
 // The module is also importable headlessly (node + jsdom) for the smoke test:
 // it touches `document` only inside functions, never at module top level.
 
-import { createGame, playCard, endTurn, isGameOver } from './engine.js?v=0.5';
-import { getCard, STARTER_DECK } from './cards.js?v=0.5';
-import { getMonster } from './monsters.js?v=0.5';
+import { createGame, playCard, endTurn, isGameOver } from './engine.js?v=0.6';
+import { getCard, STARTER_DECK } from './cards.js?v=0.6';
+import { getMonster } from './monsters.js?v=0.6';
 
 const CARDBACK = 'assets/ui/cardback.jpg';
 
@@ -302,7 +302,7 @@ export function startCombat(container, opts = {}) {
   // 10-minute HTTP cache window when the retest ran. Most likely cause:
   // the retest browser ran the CACHED pre-fix combat-ui.js (no preview
   // element at all) with fresh CSS. Mitigations shipped in v0.5:
-  // (1) every module URL carries ?v=0.5 so a new release is a fresh fetch;
+  // (1) every module URL carries ?v=0.6 so a new release is a fresh fetch;
   // (2) the preview box now has an explicit aspect-ratio + background, so
   // it has size even before its image loads; (3) tap-to-preview gives the
   // preview a second, explicit trigger path besides hover.
@@ -310,31 +310,40 @@ export function startCombat(container, opts = {}) {
   cardPreview.id = 'card-preview';
   root.appendChild(cardPreview);
   let previewFor = null; // src of the card currently enlarged, if any
+  let previewSource = null; // 'hover' | 'tap' — who showed it last
   function hidePreview() {
     cardPreview.classList.remove('show');
     previewFor = null;
+    previewSource = null;
   }
-  function showPreviewFor(img) {
+  function showPreviewFor(img, source) {
     cardPreview.src = img.src;
     cardPreview.classList.add('show');
     previewFor = img.src;
+    previewSource = source;
   }
   function togglePreview(img) {
-    if (cardPreview.classList.contains('show') && previewFor === img.src) {
+    // A tap pins the preview: if this tap already pinned this card, dismiss
+    // it; otherwise show it — and a tap must NEVER dismiss a preview that
+    // hover just showed for the same card (playtest: tap hid the preview
+    // the moment the mouse button came up, so nothing stayed to read).
+    if (previewSource === 'tap' && previewFor === img.src) {
       hidePreview();
     } else {
-      showPreviewFor(img);
+      showPreviewFor(img, 'tap');
     }
   }
   handEl.addEventListener('mouseover', (event) => {
     if (drag) return; // while dragging, the card stays under the pointer
     const img = event.target.closest('.hand-card');
     if (!img) return;
-    showPreviewFor(img);
+    showPreviewFor(img, 'hover');
   });
   handEl.addEventListener('mouseout', (event) => {
     if (event.relatedTarget && handEl.contains(event.relatedTarget)) return;
-    hidePreview();
+    // A tap-pinned preview survives the pointer leaving the hand; only a
+    // hover preview disappears on mouseout.
+    if (previewSource !== 'tap') hidePreview();
   });
   // Tapping anywhere that is not a hand card dismisses the preview.
   root.addEventListener('pointerdown', (event) => {
@@ -536,24 +545,31 @@ export function startCombat(container, opts = {}) {
     discardPileNum.textContent = String(p.discard.length);
 
     // Equipment + counters row (small round icons with the card art).
+    // Free slots render as dim dashed circles, so the row reads as slots
+    // even before anything is equipped (playtest: empty row was text only).
     equipRow.innerHTML = '';
     const equipped = [...p.equipment, ...p.counters];
-    if (equipped.length === 0) {
-      const empty = el('span', 'equip-empty', 'No equipment yet — play an Equipment card to fill a slot.');
-      equipRow.appendChild(empty);
-    } else {
-      for (const id of equipped) {
-        const card = getCard(id);
-        const chip = el('span', 'equip-chip');
-        chip.title = card ? `${card.name} — ${card.text}` : id;
-        const thumb = imgWithFallback(`assets/cards/${id}.jpg`, card ? card.name : id);
-        chip.appendChild(thumb);
-        if (p.counters.includes(id)) chip.classList.add('counter');
-        equipRow.appendChild(chip);
-      }
-      const slots = el('span', 'equip-slots', `Slots: ${p.equipment.length}/${p.equipSlots}`);
-      equipRow.appendChild(slots);
+    for (const id of equipped) {
+      const card = getCard(id);
+      const chip = el('span', 'equip-chip');
+      chip.title = card ? `${card.name} — ${card.text}` : id;
+      const thumb = imgWithFallback(`assets/cards/${id}.jpg`, card ? card.name : id);
+      chip.appendChild(thumb);
+      if (p.counters.includes(id)) chip.classList.add('counter');
+      equipRow.appendChild(chip);
     }
+    const freeSlots = Math.max(0, p.equipSlots - p.equipment.length);
+    for (let i = 0; i < freeSlots; i++) {
+      const empty = el('span', 'equip-chip empty');
+      empty.title = 'Empty equipment slot';
+      equipRow.appendChild(empty);
+    }
+    if (equipped.length === 0) {
+      const hint = el('span', 'equip-empty', 'No equipment yet');
+      equipRow.appendChild(hint);
+    }
+    const slots = el('span', 'equip-slots', `Slots: ${p.equipment.length}/${p.equipSlots}`);
+    equipRow.appendChild(slots);
 
     // Hand
     handGen += 1;
