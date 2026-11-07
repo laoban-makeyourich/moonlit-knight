@@ -582,6 +582,8 @@ export function startRun(container, opts = {}) {
           ? 'The first upgrade this chapter is free. Later upgrades cost 10 gold each.'
           : 'Upgrades now cost 10 gold each (the free one is spent for this chapter).'));
       // One row per distinct card in the deck, with its count and level.
+      // Counter cards get no effect from smithy upgrades, so their rows are
+      // disabled with a visible note instead of taking the player's gold.
       const counts = new Map();
       for (const id of run.deck) counts.set(id, (counts.get(id) || 0) + 1);
       const list = el('div', 'smithy-list');
@@ -589,17 +591,27 @@ export function startRun(container, opts = {}) {
         const card = getCard(id);
         const level = run.upgrades[id] || 0;
         const cost = firstFree ? 0 : SMITHY_PAID_COST;
+        const isCounter = card.type === 'Counter';
         const row = el('button', 'smithy-row');
         row.type = 'button';
         row.dataset.cardId = id;
         row.dataset.cost = String(cost);
+        if (isCounter) {
+          row.disabled = true;
+          row.classList.add('counter-locked');
+        }
         const thumb = imgWithFallback(`assets/cards/${id}.jpg`, card.name);
         thumb.className = 'smithy-thumb';
         row.appendChild(thumb);
         row.appendChild(el('span', 'smithy-name',
           `${card.name} ×${count}${level > 0 ? `  (+${level})` : ''}`));
-        row.appendChild(el('span', 'smithy-cost', cost === 0 ? 'Free' : `${cost} 🪙`));
+        if (isCounter) {
+          row.appendChild(el('span', 'smithy-note', 'Counter cards cannot be upgraded'));
+        } else {
+          row.appendChild(el('span', 'smithy-cost', cost === 0 ? 'Free' : `${cost} 🪙`));
+        }
         row.addEventListener('click', debounce(() => {
+          if (isCounter) return; // belt-and-braces: disabled rows don't fire
           const result = applySmithyUpgrade(run, id);
           if (!result.ok) {
             modalNotice('Not enough gold for that upgrade.');
